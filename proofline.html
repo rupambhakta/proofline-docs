@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proofline</title>
+<meta name="description" content="Proofline: an AI QA lead that plans, writes, runs, triages and maintains tests on any app. Concept and specification.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+:root{
+  --canvas:#F6F5F1; --paper:#FFFFFF; --tint:#ECEAE3; --ink:#16181D; --muted:#545962; --line:#D8D5CB;
+  --accent:#B93D0B; --accent-soft:#F7E1D5; --on-accent:#FFFFFF; --pass:#1E7A4C; --fail:#B42318;
+  --band:#16181D; --band-ink:#F2F0EA; --band-muted:#A9ADB5; --band-line:#30343C; --band-accent:#FF9257; --band-card:#1F2228;
+  --serif:"Instrument Serif",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --nav:68px; --r:6px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --canvas:#121418; --paper:#1B1E24; --tint:#1A1D22; --ink:#ECEAE5; --muted:#A3A8B1; --line:#2F343C;
+    --accent:#FF9257; --accent-soft:#3A2418; --on-accent:#16181D; --pass:#4CC38A; --fail:#F97066;
+    --band:#0A0B0E; --band-card:#16181D; --band-line:#272A31;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--nav) + 8px)}
+body{margin:0;background:var(--canvas);color:var(--ink);font:400 17px/1.55 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{font-family:var(--serif);font-weight:400;line-height:1.05;margin:0;letter-spacing:-.01em}
+h2{font-size:clamp(2.3rem,5vw,3.9rem)}
+h3{font-size:1.65rem}
+p{margin:0}
+.wrap{max-width:1240px;margin:0 auto;padding:0 32px}
+.lead{font-size:1.2rem;color:var(--muted);max-width:44ch;margin-top:18px}
+.mono{font-family:var(--mono)}
+.accent{color:var(--accent)}
+svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+section{padding:112px 0}
+.band{background:var(--band);color:var(--band-ink)}
+.band .lead{color:var(--band-muted)}
+.band .accent{color:var(--band-accent)}
+.tint{background:var(--tint)}
+
+/* nav */
+nav{position:sticky;top:0;z-index:20;height:var(--nav);background:color-mix(in srgb,var(--canvas) 92%,transparent);backdrop-filter:saturate(1.2) blur(6px);border-bottom:1px solid var(--line)}
+nav .wrap{height:100%;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.logo{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none}
+.logo svg{width:40px;height:40px}
+.logo span{font-family:var(--serif);font-size:2rem;line-height:1}
+.navlinks{display:flex;gap:26px;font-size:.95rem}
+.navlinks a{color:var(--muted);text-decoration:none}
+.navlinks a:hover{color:var(--ink)}
+.navlinks a.spec{color:var(--accent);font-weight:600}
+
+/* hero */
+.hero{min-height:calc(100svh - var(--nav));display:flex;align-items:center;padding:48px 0}
+.hero .wrap{display:grid;grid-template-columns:1.25fr .9fr;gap:56px;align-items:center;width:100%}
+.hero h1{font-size:clamp(3.2rem,7vw,6.4rem)}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.hero .lead{font-size:1.32rem;max-width:36ch;margin-top:28px}
+.platforms{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:40px;color:var(--muted);font-size:.98rem}
+.platforms span{display:flex;align-items:center;gap:8px}
+.ring{position:relative}
+.ring svg{width:100%;max-width:440px;display:block;margin:0 auto}
+.ring-legend{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px;font-size:.95rem}
+.ring-legend b{display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:4px}
+.ring-legend p{color:var(--muted)}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+
+/* evidence bento */
+.ev-head{display:flex;justify-content:space-between;align-items:end;gap:40px;flex-wrap:wrap}
+.bento{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--band-line);border:1px solid var(--band-line);margin-top:56px}
+.tile{background:var(--band);padding:30px 28px}
+.tile.big{grid-column:span 2;grid-row:span 2;display:flex;flex-direction:column;justify-content:flex-end}
+.tile .n{font-family:var(--serif);font-size:3.2rem;line-height:1;color:var(--band-accent)}
+.tile.big .n{font-size:clamp(5rem,10vw,8.5rem)}
+.tile p{margin-top:12px;color:var(--band-muted);font-size:1rem}
+.tile.big p{font-size:1.25rem;color:var(--band-ink);max-width:28ch}
+.foot{margin-top:22px;font-size:.88rem;color:var(--band-muted)}
+
+/* timeline */
+.timeline{display:grid;grid-template-columns:repeat(6,1fr);margin-top:64px;position:relative}
+.timeline::before{content:"";position:absolute;left:0;right:0;top:27px;height:2px;background:var(--accent)}
+.tl{position:relative;padding-right:22px}
+.tl .ic{width:56px;height:56px;border-radius:50%;background:var(--canvas);border:2px solid var(--accent);display:grid;place-items:center;color:var(--accent);position:relative}
+.tl:last-child .ic{background:var(--accent);color:var(--canvas)}
+.tl h3{font-size:1.45rem;margin-top:22px}
+.tl p{color:var(--muted);margin-top:8px;font-size:.98rem}
+.tl .when{font-family:var(--mono);font-size:.78rem;color:var(--accent);margin-top:14px;display:block}
+
+/* how we test */
+.how{display:grid;grid-template-columns:1fr 1.15fr;gap:40px;margin-top:56px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:36px}
+.panel h3{margin-bottom:6px}
+.panel .sub{color:var(--muted);font-size:.98rem}
+.pyr{display:grid;grid-template-columns:200px 1fr;gap:26px;align-items:center;margin-top:30px}
+.pyr svg{width:100%}
+.pyr-rows{display:grid;gap:30px}
+.pyr-rows b{font-size:1.1rem}
+.pyr-rows .mono{display:block;color:var(--muted);font-size:.85rem;margin-top:2px}
+.cibar{display:flex;height:58px;margin-top:30px;border-radius:var(--r);overflow:hidden;font-size:.9rem;font-weight:500}
+.cibar div{display:flex;align-items:center;padding:0 16px}
+.cibar .env{flex:86;background:var(--tint);color:var(--muted)}
+.cibar .run{flex:17;background:var(--accent);color:var(--on-accent);justify-content:center;padding:0}
+.cilabels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.8rem;color:var(--muted);margin-top:8px}
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:.88rem;background:var(--canvas);color:var(--ink)}
+.chip.hot{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.findings{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1.6fr;gap:12px 40px;align-items:center}
+.findings h3{font-size:2.2rem;margin:0}
+.findings .note{grid-column:1 / -1;margin-top:0}
+.found{display:flex;gap:14px;flex-wrap:wrap}
+.found > div{flex:1;min-width:110px;border-left:3px solid var(--accent);padding:4px 0 4px 14px}
+.found .n{font-family:var(--serif);font-size:2.6rem;line-height:1}
+.found p{color:var(--muted);font-size:.9rem}
+
+/* pains ledger */
+.ledger{margin-top:56px;border-top:2px solid var(--ink)}
+.row{display:grid;grid-template-columns:52px 1.05fr 1.4fr 1.4fr;gap:28px;padding:26px 0;border-bottom:1px solid var(--line);align-items:start}
+.row.head{padding:14px 0;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.row .ic{color:var(--fail);padding-top:2px}
+.row .ic svg{width:30px;height:30px}
+.row h3{font-size:1.6rem}
+.row p{color:var(--muted)}
+.row .fix{color:var(--ink);display:flex;gap:10px}
+.row .fix svg{color:var(--pass);margin-top:2px}
+
+/* loop */
+.loop{display:grid;grid-template-columns:1.65fr 1fr;gap:40px;align-items:center;margin-top:40px}
+#loopsvg{width:100%;display:block}
+#loopsvg text{font-family:var(--sans);fill:var(--ink)}
+.touch{display:grid;gap:14px}
+.touch div{display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:start;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.touch .ic{width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center}
+.touch b{display:block;font-size:1.05rem}
+.touch p{color:var(--muted);font-size:.93rem}
+.looplist{display:none}
+.dial{margin-top:72px}
+.dial-track{display:grid;grid-template-columns:repeat(5,1fr);margin-top:24px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.dial-track div{padding:20px 18px;background:var(--paper);border-right:1px solid var(--line);position:relative}
+.dial-track div:last-child{border-right:0}
+.dial-track .lv{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.dial-track b{display:block;font-size:1.05rem;margin-top:4px}
+.dial-track p{font-size:.88rem;color:var(--muted);margin-top:4px}
+.dial-track .start{background:var(--accent-soft)}
+.dial-track .start .lv{color:var(--accent);font-weight:600}
+.dial-cap{display:flex;justify-content:space-between;margin-top:10px;font-size:.9rem;color:var(--muted)}
+
+/* any app */
+.matrix{width:100%;border-collapse:collapse;margin-top:52px}
+.matrix th,.matrix td{padding:20px 14px;border-bottom:1px solid var(--band-line);text-align:left;vertical-align:middle}
+.matrix thead th{font-weight:500;color:var(--band-muted);font-size:.92rem}
+.matrix thead th .i{display:block;margin-bottom:6px;color:var(--band-ink)}
+.matrix .ph{display:block;font-family:var(--mono);font-size:.72rem;color:var(--band-accent);margin-top:2px}
+.matrix td.c{text-align:center;width:11%}
+.matrix th.c{text-align:center}
+.matrix th.c .i{margin:0 auto 6px}
+.matrix .mode{display:flex;gap:14px;align-items:center}
+.matrix .mode b{font-size:1.15rem;font-weight:600}
+.matrix .mode p{color:var(--band-muted);font-size:.9rem}
+.matrix .ok{color:var(--band-accent)}
+.watch{display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:1px;background:var(--band-line);margin-top:64px;border:1px solid var(--band-line)}
+.watch > div{background:var(--band-card);padding:26px}
+.watch h3{font-size:1.9rem;max-width:12ch}
+.watch .ic{color:var(--band-accent)}
+.watch b{display:block;margin-top:12px;font-size:1.05rem}
+.watch p{color:var(--band-muted);font-size:.93rem;margin-top:4px}
+
+/* calculator */
+.calc{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:52px;align-items:start}
+.calc table{width:100%;border-collapse:collapse}
+.calc td,.calc th{padding:11px 6px;border-bottom:1px solid var(--line);font-size:.97rem}
+.calc th{text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.calc input{width:76px;font:500 1rem var(--mono);padding:7px 8px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}
+.calc td.t{font-family:var(--mono);color:var(--accent);text-align:right}
+.calc .rel{display:flex;align-items:center;gap:12px;margin-top:22px;font-size:.97rem}
+.result{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:34px}
+.result .big{font-family:var(--serif);font-size:clamp(4rem,8vw,6.4rem);line-height:1;color:var(--accent)}
+.result .cap{color:var(--muted);margin-top:6px}
+.bars{margin-top:30px;display:grid;gap:14px}
+.bar{display:grid;grid-template-columns:96px 1fr 72px;gap:12px;align-items:center;font-size:.92rem}
+.bar .track{height:30px;background:var(--tint);border-radius:4px;overflow:hidden}
+.bar .fill{height:100%;background:var(--ink);transition:width .3s}
+.bar.after .fill{background:var(--accent)}
+.bar .v{font-family:var(--mono);text-align:right}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:28px;padding-top:24px;border-top:1px solid var(--line)}
+.kpis .n{font-family:var(--serif);font-size:2.4rem;line-height:1}
+.kpis p{color:var(--muted);font-size:.9rem}
+.note{font-size:.86rem;color:var(--muted);margin-top:18px}
+.leftfor{margin-top:26px;padding-top:22px;border-top:1px solid var(--line)}
+#leftlist{display:grid;gap:8px;margin-top:12px}
+#leftlist div{display:grid;grid-template-columns:1fr 3fr 56px;gap:12px;align-items:center;font-size:.92rem}
+#leftlist i{display:block;height:8px;background:var(--accent);border-radius:4px}
+#leftlist span:last-child{font-family:var(--mono);text-align:right}
+
+/* moat */
+.moat{display:grid;grid-template-columns:1.15fr 1fr;gap:56px;margin-top:52px;align-items:center}
+.stack{display:grid;gap:8px}
+.layer{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:18px 22px;border-radius:var(--r);background:var(--paper);border:1px solid var(--line)}
+.layer b{font-size:1.1rem}
+.layer p{color:var(--muted);font-size:.9rem}
+.layer .tag{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.layer:first-child{background:var(--band);color:var(--band-ink);border-color:var(--band)}
+.layer:first-child p,.layer:first-child .tag{color:var(--band-muted)}
+.stack .l2{margin:0 18px}.stack .l3{margin:0 36px}.stack .l4{margin:0 54px}.stack .l5{margin:0 72px}
+.stack-cap{text-align:center;font-size:.9rem;color:var(--muted);margin-top:12px}
+.moats{display:grid;gap:30px}
+.moats div{display:grid;grid-template-columns:40px 1fr;gap:16px}
+.moats .ic{color:var(--accent)}
+.moats .ic svg{width:32px;height:32px}
+.moats b{font-family:var(--serif);font-size:1.7rem;font-weight:400;line-height:1.1;display:block}
+.moats p{color:var(--muted);margin-top:4px}
+
+/* coverage staircase */
+.stairs{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-items:start;margin-top:56px}
+.step{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:22px 18px;display:flex;flex-direction:column;gap:12px}
+.step:nth-child(1){margin-top:144px}.step:nth-child(2){margin-top:108px}.step:nth-child(3){margin-top:72px}.step:nth-child(4){margin-top:36px}.step:nth-child(5){background:var(--band);color:var(--band-ink);border-color:var(--band)}
+.step h3{font-size:1.6rem}
+.step .lvl{font-family:var(--mono);font-size:.75rem;color:var(--accent)}
+.step:nth-child(5) .lvl{color:var(--band-accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.step .chip{font-size:.8rem;padding:4px 10px}
+.step:nth-child(5) .chip{background:transparent;border-color:var(--band-line);color:var(--band-ink)}
+.legend{display:flex;gap:22px;flex-wrap:wrap;margin-top:22px;font-size:.92rem;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:8px}
+
+/* roadmap */
+.road{display:grid;grid-template-columns:repeat(5,1fr);margin-top:60px;border-top:2px solid var(--band-accent)}
+.phase{padding:26px 20px 0 0;position:relative}
+.road .phase::before{content:"";position:absolute;top:-8px;left:0;width:14px;height:14px;border-radius:50%;background:var(--band-accent)}
+.road .ic{color:var(--band-accent);margin-top:6px}
+.road h3{font-size:1.75rem;margin-top:14px}
+.road p{color:var(--band-muted);font-size:.93rem;margin-top:8px}
+.road .gate{margin-top:16px;padding-top:12px;border-top:1px dashed var(--band-line);font-size:.88rem;color:var(--band-ink)}
+.road .gate span{display:block;font-family:var(--mono);font-size:.72rem;color:var(--band-accent);margin-bottom:4px}
+
+/* spec */
+.spec-head{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:end}
+.spec-tools{display:flex;gap:10px;justify-content:flex-end}
+.btn{font:500 .92rem var(--sans);padding:10px 16px;border-radius:4px;border:1px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+.btn:hover{background:var(--ink);color:var(--canvas)}
+.specs{margin-top:44px;border-top:2px solid var(--ink)}
+details{border-bottom:1px solid var(--line)}
+summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:40px 1fr auto;gap:16px;align-items:center;padding:22px 0}
+summary::-webkit-details-marker{display:none}
+summary .ic{color:var(--accent)}
+summary h3{font-size:1.75rem}
+summary .hint{color:var(--muted);font-size:.92rem}
+summary .pm{width:28px;height:28px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;transition:transform .2s}
+details[open] summary .pm{transform:rotate(45deg)}
+.body{padding:0 0 34px 56px}
+.body table{width:100%;border-collapse:collapse;font-size:.95rem}
+.body th,.body td{text-align:left;padding:11px 12px 11px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.body th{font-size:.76rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.body td:first-child{font-weight:600;white-space:nowrap}
+.body .two{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.body h4{margin:0 0 10px;font-size:1rem}
+.body ul{margin:0;padding-left:18px;color:var(--muted)}
+.body li{margin:5px 0}
+.body li b{color:var(--ink);font-weight:600}
+.tscroll{overflow-x:auto}
+.arch{display:grid;gap:10px}
+.arch .lyr{display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:center;padding:16px 18px;border:1px solid var(--line);border-radius:var(--r);background:var(--paper)}
+.arch .lyr b{font-size:1rem}
+.arch .lyr b span{display:block;font-weight:400;font-size:.82rem;color:var(--muted)}
+.arch .core{border:2px solid var(--accent);background:var(--accent-soft)}
+.arch .down{text-align:center;color:var(--muted);line-height:0}
+
+footer{padding:56px 0;border-top:1px solid var(--line);font-size:.9rem;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:center}
+
+@media (max-width:1080px){
+  .hero .wrap,.how,.loop,.moat,.calc,.spec-head,.findings{grid-template-columns:1fr}
+  .bento{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .timeline{grid-template-columns:repeat(3,1fr);row-gap:44px}
+  .timeline::before{display:none}
+  .stairs{grid-template-columns:repeat(3,1fr)}
+  .step:nth-child(n){margin-top:0}
+  .road{grid-template-columns:repeat(3,1fr);row-gap:40px}
+  .watch{grid-template-columns:1fr 1fr}
+  .watch > div:first-child{grid-column:1 / -1}
+  .spec-tools{justify-content:flex-start}
+  .loop .touch{grid-template-columns:1fr 1fr}
+}
+@media (max-width:760px){
+  body{font-size:16px}
+  .wrap{padding:0 16px}
+  section{padding:76px 0}
+  .navlinks a:not(.spec){display:none}
+  .logo span{font-size:1.7rem}
+  .bento{grid-template-columns:1fr 1fr}
+  .tile{padding:22px 18px}
+  .tile .n{font-size:2.5rem}
+  .timeline{grid-template-columns:1fr;row-gap:30px}
+  .tl{display:grid;grid-template-columns:56px 1fr;column-gap:18px;padding:0}
+  .tl h3{margin-top:4px}
+  .tl > *:not(.ic){grid-column:2}
+  .tl .ic{grid-row:1 / span 3}
+  .pyr{grid-template-columns:120px 1fr}
+  .panel{padding:24px 20px}
+  .row{grid-template-columns:36px 1fr;gap:6px 14px}
+  .row.head{display:none}
+  .row > :nth-child(n+3){grid-column:2}
+  .row .ic svg{width:26px;height:26px}
+  #loopsvg{display:none}
+  .looplist{display:grid;gap:10px}
+  .loop .touch{grid-template-columns:1fr}
+  .dial-track{grid-template-columns:1fr}
+  .dial-track div{border-right:0;border-bottom:1px solid var(--line)}
+  .matrix thead{display:none}
+  .matrix,.matrix tbody,.matrix tr,.matrix td{display:block;width:100%}
+  .matrix tr{border-bottom:1px solid var(--band-line);padding:16px 0}
+  .matrix td{border:0;padding:4px 0}
+  .matrix td.c{display:inline-block;width:auto;margin-right:12px;font-size:.85rem;color:var(--band-muted)}
+  .matrix td.c::after{content:attr(data-l);margin-left:4px}
+  .watch{grid-template-columns:1fr}
+  .stairs{grid-template-columns:1fr}
+  .stack .l2,.stack .l3,.stack .l4,.stack .l5{margin:0}
+  .road{grid-template-columns:1fr}
+  .body{padding-left:0}
+  .body .two{grid-template-columns:1fr}
+  .arch .lyr{grid-template-columns:1fr;gap:8px}
+  .bar{grid-template-columns:70px 1fr 64px}
+  summary h3{font-size:1.4rem}
+  summary .hint{display:none}
+  summary{grid-template-columns:32px 1fr auto}
+  .calc input{width:64px}
+  .ring svg{max-width:300px}
+  #leftlist div{grid-template-columns:minmax(120px,1.4fr) 1fr 52px}
+}
+@media print{
+  nav{position:static}
+  .hero{min-height:0}
+  section{padding:48px 0;break-inside:avoid-page}
+  .spec-tools{display:none}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8 20h8"/></symbol>
+  <symbol id="i-api" viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z"/><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6.5h6l2 2h10V19H3z"/><path d="M10 12.5l-2 2 2 2M14 12.5l2 2-2 2"/></symbol>
+  <symbol id="i-buoy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2M10 21v-3h4v3"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 3v18M7 21h10M4 7h16M4 7l-2.5 6a2.5 2.5 0 0 0 5 0zM20 7l-2.5 6a2.5 2.5 0 0 0 5 0z"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4.5"/><path d="M11.2 11.8L20 3M16.5 6.5l3 3"/></symbol>
+  <symbol id="i-signal" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="20" rx="2"/><circle cx="12" cy="7" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="17" r="1.4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-bug" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="13" rx="5"/><path d="M12 11v9M9 4l1.5 3M15 4l-1.5 3M3 10h4M17 10h4M3 15h4M17 15h4"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 3.5V8h4.5M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20.5V16h-4.5"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V11M10 20V5M16 20v-7M3 20h18"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h13l-2.5 4.5L18 13H5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5l12.5 7.5L7 19.5z"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2.5V8M15 2.5V8M6 8h12v3a6 6 0 0 1-12 0zM12 17v4.5"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.2"/><rect x="3" y="13" width="18" height="7" rx="1.2"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+  <symbol id="i-funnel" viewBox="0 0 24 24"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="1.5"/><path d="M15.5 10.5L21.5 7v10l-6-3.5z"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 12h3l3-7 4 14 3-9 2 2h5"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9.2c-.6-1-1.7-1.5-3-1.5-1.7 0-3 .9-3 2.1 0 2.9 6 1.5 6 4.4 0 1.2-1.3 2.1-3 2.1-1.3 0-2.5-.6-3-1.5M12 6v1.7M12 16.3V18"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3.6-3.6a4 4 0 0 0-5.7-5.7L12 6.3M14 10a4 4 0 0 0-5.7 0l-3.6 3.6a4 4 0 0 0 5.7 5.7L12 17.7"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v16M6 14l6 6 6-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4.5M12 17.5h.01"/></symbol>
+</svg>
+
+<nav>
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="Proofline home">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="1" width="38" height="38" rx="7" fill="var(--ink)"/><path d="M7 23h9l4 5 13-16" fill="none" stroke="var(--accent)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Proofline</span>
+    </a>
+    <div class="navlinks">
+      <a href="#problem">Problem</a>
+      <a href="#story">Story</a>
+      <a href="#loop">How it works</a>
+      <a href="#hours">Hours saved</a>
+      <a href="#coverage">Coverage</a>
+      <a href="#roadmap">Roadmap</a>
+      <a class="spec" href="#spec">Spec</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <h1>Humans decide.<br><em>Proofline</em> does the rest.</h1>
+      <p class="lead">An AI QA lead that plans, writes, runs, triages and maintains your tests. On any app, with or without the code.</p>
+      <div class="platforms">
+        <span><svg class="i"><use href="#i-globe"/></svg>Web</span>
+        <span><svg class="i"><use href="#i-phone"/></svg>Mobile</span>
+        <span><svg class="i"><use href="#i-monitor"/></svg>Desktop</span>
+        <span><svg class="i"><use href="#i-api"/></svg>API</span>
+        <span><svg class="i"><use href="#i-cube"/></svg>No code access</span>
+        <span><svg class="i"><use href="#i-folder"/></svg>Full code access</span>
+      </div>
+    </div>
+    <div class="ring">
+      <svg viewBox="0 0 300 300" role="img" aria-label="Target: 90 percent of repeatable QA hours handled by Proofline, 10 percent by people">
+        <circle cx="150" cy="150" r="118" fill="none" stroke="var(--tint)" stroke-width="26"/>
+        <circle cx="150" cy="150" r="118" fill="none" stroke="var(--accent)" stroke-width="26" stroke-dasharray="667.3 741.4" transform="rotate(-90 150 150)"/>
+        <circle cx="150" cy="150" r="118" fill="none" stroke="var(--ink)" stroke-width="26" stroke-dasharray="70.1 741.4" stroke-dashoffset="-671.3" transform="rotate(-90 150 150)"/>
+        <text x="150" y="152" text-anchor="middle" font-family="Instrument Serif, Georgia, serif" font-size="92" fill="var(--ink)">90%</text>
+        <text x="150" y="186" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="14" fill="var(--muted)">of repeatable QA hours</text>
+        <text x="150" y="204" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="14" fill="var(--muted)">handled by Proofline</text>
+      </svg>
+      <div class="ring-legend">
+        <div><b><i class="dot" style="background:var(--accent)"></i>Proofline</b><p>Plans, writes, runs, triages, maintains, reports</p></div>
+        <div><b><i class="dot" style="background:var(--ink)"></i>Your team</b><p>Intent, judgement calls, access, go/no-go</p></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="band" id="problem">
+  <div class="wrap">
+    <div class="ev-head">
+      <h2>One small app.<br><span class="accent">Eight ways QA wastes hours.</span></h2>
+      <p class="lead">Every number below was measured while I tested my own live product. Scale it to a real team and the cost is a full-time job.</p>
+    </div>
+    <div class="bento">
+      <div class="tile big"><div class="n">6 of 11</div><p>tests made useless by renaming one button. The login still worked perfectly.</p></div>
+      <div class="tile"><div class="n">30×</div><p>slower to check the same rule through the UI than through the API</p></div>
+      <div class="tile"><div class="n">17s</div><p>of a 1m 43s CI run was testing. The rest was building the environment.</p></div>
+      <div class="tile"><div class="n">73 → 2</div><p>security alerts that actually mattered. The severity labels never said which.</p></div>
+      <div class="tile"><div class="n">99.98%</div><p>of a load test's "8,488 requests/s" were rejections. Real capacity: about 140 logins/s.</p></div>
+      <div class="tile"><div class="n">13.85%</div><p>code coverage from 138 unit tests. Google sign-in: tested at no layer at all.</p></div>
+      <div class="tile"><div class="n">1 red ✕</div><p>looks identical for a product bug, a broken test and a busy environment</p></div>
+      <div class="tile"><div class="n">0</div><p>findings from an AI agent that explored by screenshot, after a large token bill</p></div>
+      <div class="tile"><div class="n">14</div><p>separate pain points, logged the moment each one happened</p></div>
+    </div>
+    <p class="foot">Measured on Lettera, a live email product, during hands-on QA work, 10 to 12 October 2026.</p>
+  </div>
+</section>
+
+<section id="story">
+  <div class="wrap">
+    <h2>I didn't read about the problem.<br><span class="accent">I hit it, fourteen times.</span></h2>
+    <div class="timeline">
+      <div class="tl"><div class="ic"><svg class="i"><use href="#i-mail"/></svg></div><h3>Built Lettera</h3><p>A live email product with real users and real stakes.</p><span class="when">Before</span></div>
+      <div class="tl"><div class="ic"><svg class="i"><use href="#i-book"/></svg></div><h3>Learned QA by doing</h3><p>12 hands-on lessons on my own product, not a tutorial app.</p><span class="when">Oct 2026</span></div>
+      <div class="tl"><div class="ic"><svg class="i"><use href="#i-layers"/></svg></div><h3>Built the suite</h3><p>15 automated tests, a CI pipeline, load and security checks.</p><span class="when">Lessons 1 to 12</span></div>
+      <div class="tl"><div class="ic"><svg class="i"><use href="#i-note"/></svg></div><h3>Logged every pain</h3><p>14 problems written down the moment they happened, with evidence.</p><span class="when">Same days</span></div>
+      <div class="tl"><div class="ic"><svg class="i"><use href="#i-bug"/></svg></div><h3>Found real issues</h3><p>7 findings in my own product: 1 critical, 2 high, 2 medium, 2 insights.</p><span class="when">Lessons 9 to 11</span></div>
+      <div class="tl"><div class="ic"><svg class="i"><use href="#i-flag"/></svg></div><h3>Proofline</h3><p>Every pain had one shape: repeatable work, waiting on a human.</p><span class="when">Now</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="tint">
+  <div class="wrap">
+    <h2>How I test Lettera today</h2>
+    <p class="lead">This is the manual baseline Proofline replaces. A good setup, and it still needed a person at every step.</p>
+    <div class="how">
+      <div class="panel">
+        <h3>The test pyramid</h3>
+        <p class="sub">More cheap tests at the bottom, few slow ones on top</p>
+        <div class="pyr">
+          <svg viewBox="0 0 230 210" role="img" aria-label="Test pyramid: UI on top, API in the middle, unit at the base">
+            <path d="M115 6 L152 70 L78 70 Z" fill="var(--accent)"/>
+            <path d="M75 76 L155 76 L190 136 L40 136 Z" fill="var(--ink)" opacity=".75"/>
+            <path d="M37 142 L193 142 L228 204 L2 204 Z" fill="var(--ink)"/>
+          </svg>
+          <div class="pyr-rows">
+            <div><b>UI · 5 tests</b><span class="mono">1 to 5 s each · real browser</span></div>
+            <div><b>API · 10 tests</b><span class="mono">~50 ms each · incl. 4 security</span></div>
+            <div><b>Unit · 138 tests</b><span class="mono">~2 ms each · one function</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>One CI run on every push</h3>
+        <p class="sub">1 minute 43 seconds in total</p>
+        <div class="cibar"><div class="env">Building the environment · 86s</div><div class="run">17s</div></div>
+        <div class="cilabels"><span>0s</span><span>Testing</span><span>103s</span></div>
+        <div class="steps">
+          <span class="chip"><svg class="i" style="width:16px;height:16px"><use href="#i-db"/></svg>Database</span>
+          <span class="chip"><svg class="i" style="width:16px;height:16px"><use href="#i-mail"/></svg>Fake inbox</span>
+          <span class="chip"><svg class="i" style="width:16px;height:16px"><use href="#i-lock"/></svg>Throwaway secrets</span>
+          <span class="chip"><svg class="i" style="width:16px;height:16px"><use href="#i-server"/></svg>Migrate + start app</span>
+          <span class="chip"><svg class="i" style="width:16px;height:16px"><use href="#i-globe"/></svg>Install browser</span>
+          <span class="chip hot"><svg class="i" style="width:16px;height:16px"><use href="#i-play"/></svg>Run 12 tests</span>
+          <span class="chip"><svg class="i" style="width:16px;height:16px"><use href="#i-chart"/></svg>Report + traces</span>
+        </div>
+        <p class="note" style="margin-top:26px">Every chip above was a hand-written recipe. Every red result still needed me to open screenshots and logs and decide: product bug, test bug, or environment?</p>
+      </div>
+      <div class="panel findings">
+        <h3>7 findings in my own product</h3>
+        <div class="found">
+          <div><div class="n">1</div><p>critical</p></div>
+          <div><div class="n">2</div><p>high</p></div>
+          <div><div class="n">2</div><p>medium</p></div>
+          <div><div class="n">2</div><p>insights</p></div>
+        </div>
+        <p class="note">2 came from a scanner, buried among 73 alerts. The other 5 no scanner could see. Details stay private while fixes ship.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>The seven pains,<br><span class="accent">and the fix for each</span></h2>
+    <div class="ledger">
+      <div class="row head"><span></span><span>Pain</span><span>What it costs a team</span><span>What Proofline does</span></div>
+      <div class="row"><span class="ic"><svg class="i"><use href="#i-x"/></svg></span><h3>Tests rot</h3><p>One redesign breaks dozens of tests that still describe correct behaviour.</p><p class="fix"><svg class="i"><use href="#i-check"/></svg>Reads the code change, asks "intended?", ships the test fix as a pull request.</p></div>
+      <div class="row"><span class="ic"><svg class="i"><use href="#i-funnel"/></svg></span><h3>Red ✕ triage</h3><p>Someone opens screenshots and logs every morning to sort bug from test from environment.</p><p class="fix"><svg class="i"><use href="#i-check"/></svg>Labels every failure with evidence and groups failures by root cause.</p></div>
+      <div class="row"><span class="ic"><svg class="i"><use href="#i-wave"/></svg></span><h3>Flaky tests</h3><p>Pass sometimes, fail sometimes. Teams hit retry and stop trusting the suite.</p><p class="fix"><svg class="i"><use href="#i-check"/></svg>Run history spots timing and shared-data patterns, quarantines, then fixes.</p></div>
+      <div class="row"><span class="ic"><svg class="i"><use href="#i-layers"/></svg></span><h3>Upside-down pyramid</h3><p>Slow UI tests checking rules an API test catches 30× faster.</p><p class="fix"><svg class="i"><use href="#i-check"/></svg>Writes every check at the cheapest level that can still catch the bug.</p></div>
+      <div class="row"><span class="ic"><svg class="i"><use href="#i-server"/></svg></span><h3>Environments and data</h3><p>Setup recipes that rot. Tests that collide over shared users and records.</p><p class="fix"><svg class="i"><use href="#i-check"/></svg>Generates sandboxes and gives every run its own clean, unique data.</p></div>
+      <div class="row"><span class="ic"><svg class="i"><use href="#i-alert"/></svg></span><h3>False confidence</h3><p>Coverage, load and scanner numbers that look precise and mislead.</p><p class="fix"><svg class="i"><use href="#i-check"/></svg>Proves each test can fail, and reads every number in context before reporting it.</p></div>
+      <div class="row"><span class="ic"><svg class="i"><use href="#i-refresh"/></svg></span><h3>Manual regression</h3><p>No code access, so testers repeat the same clicks every single release.</p><p class="fix"><svg class="i"><use href="#i-check"/></svg>A human explores once. Proofline records, scripts and replays it forever.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="tint" id="loop">
+  <div class="wrap">
+    <h2>One loop. AI per change,<br><span class="accent">never per click.</span></h2>
+    <p class="lead">The AI writes tests once. Plain, deterministic runners replay them for free. People appear at four points only.</p>
+    <div class="loop">
+      <svg id="loopsvg" viewBox="-175 -10 990 710" role="img" aria-label="The Proofline loop: Connect, Map, Plan, Generate, Provision, Run, Triage, Act, Gate, Learn"></svg>
+      <div class="looplist" id="looplist"></div>
+      <div class="touch">
+        <div><span class="ic"><svg class="i"><use href="#i-key"/></svg></span><span><b>Grant access</b><p>Test logins, repo token, a build. Once per project.</p></span></div>
+        <div><span class="ic"><svg class="i"><use href="#i-target"/></svg></span><span><b>Confirm intent</b><p>"Logout must end the session." One click, then it's a test forever.</p></span></div>
+        <div><span class="ic"><svg class="i"><use href="#i-scale"/></svg></span><span><b>Bug or intended?</b><p>"Log in" became "Sign in". Only asked when the AI isn't sure.</p></span></div>
+        <div><span class="ic"><svg class="i"><use href="#i-signal"/></svg></span><span><b>Go / no-go</b><p>Optional. A quality gate policy can release on its own.</p></span></div>
+      </div>
+    </div>
+    <div class="dial">
+      <h3>A trust dial, set per project</h3>
+      <div class="dial-track">
+        <div><span class="lv">L0</span><b>Assist</b><p>Answers questions about your suite</p></div>
+        <div><span class="lv">L1</span><b>Suggest</b><p>Proposes tests and fixes</p></div>
+        <div class="start"><span class="lv">L2 · start here</span><b>Act with approval</b><p>Does the work, you approve</p></div>
+        <div><span class="lv">L3</span><b>Act and report</b><p>Does the work, tells you after</p></div>
+        <div><span class="lv">L4</span><b>Autonomous gate</b><p>Decides releases by policy</p></div>
+      </div>
+      <div class="dial-cap"><span>More human</span><span>Trust is earned, one level at a time</span><span>Less human</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <h2>Any app. <span class="accent">Any access.</span></h2>
+    <p class="lead">One brain. The platform only changes the hands it uses. The access level only changes what it can read.</p>
+    <table class="matrix">
+      <thead><tr><th>Mode</th>
+        <th class="c"><svg class="i"><use href="#i-globe"/></svg>Web<span class="ph">MVP</span></th>
+        <th class="c"><svg class="i"><use href="#i-api"/></svg>API<span class="ph">MVP</span></th>
+        <th class="c"><svg class="i"><use href="#i-phone"/></svg>Mobile<span class="ph">Phase 3</span></th>
+        <th class="c"><svg class="i"><use href="#i-monitor"/></svg>Desktop<span class="ph">Phase 4</span></th></tr></thead>
+      <tbody>
+        <tr><td><div class="mode"><svg class="i"><use href="#i-cube"/></svg><div><b>Black box</b><p>URL or build, test logins, docs, recorded sessions, captured traffic</p></div></div></td><td class="c ok" data-l="Web">✓</td><td class="c ok" data-l="API">✓</td><td class="c ok" data-l="Mobile">✓</td><td class="c ok" data-l="Desktop">✓</td></tr>
+        <tr><td><div class="mode"><svg class="i"><use href="#i-folder"/></svg><div><b>Code access</b><p>Repo, CI, tickets and every pull request's diff</p></div></div></td><td class="c ok" data-l="Web">✓</td><td class="c ok" data-l="API">✓</td><td class="c ok" data-l="Mobile">✓</td><td class="c ok" data-l="Desktop">✓</td></tr>
+        <tr><td><div class="mode"><svg class="i"><use href="#i-buoy"/></svg><div><b>Suite rescue</b><p>Import an old Selenium, Cypress or Appium suite. De-flake it, rebalance it.</p></div></div></td><td class="c ok" data-l="Web">✓</td><td class="c ok" data-l="API">✓</td><td class="c ok" data-l="Mobile">✓</td><td class="c ok" data-l="Desktop">✓</td></tr>
+        <tr><td><div class="mode"><svg class="i"><use href="#i-eye"/></svg><div><b>Production watch</b><p>Read-only synthetic checks on the live app, around the clock</p></div></div></td><td class="c ok" data-l="Web">✓</td><td class="c ok" data-l="API">✓</td><td class="c ok" data-l="Mobile">✓</td><td class="c ok" data-l="Desktop">✓</td></tr>
+        <tr><td><div class="mode"><svg class="i"><use href="#i-building"/></svg><div><b>Agency workspace</b><p>Many client projects, one team, each client fully isolated</p></div></div></td><td class="c ok" data-l="Web">✓</td><td class="c ok" data-l="API">✓</td><td class="c ok" data-l="Mobile">✓</td><td class="c ok" data-l="Desktop">✓</td></tr>
+      </tbody>
+    </table>
+    <div class="watch">
+      <div><span class="ic"><svg class="i" style="width:34px;height:34px"><use href="#i-user"/></svg></span><h3 style="margin-top:14px">No code? The human explores. The AI watches.</h3></div>
+      <div><span class="ic"><svg class="i"><use href="#i-video"/></svg></span><b>Record a session</b><p>A tester clicks through once. Proofline turns it into a script.</p></div>
+      <div><span class="ic"><svg class="i"><use href="#i-link"/></svg></span><b>Capture the traffic</b><p>Network calls become API tests. Gray-box testing, without the code.</p></div>
+      <div><span class="ic"><svg class="i"><use href="#i-refresh"/></svg></span><b>Replay every release</b><p>Compared with the last good build. Only real differences reach a person.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="hours">
+  <div class="wrap">
+    <h2>Put in your own hours.</h2>
+    <p class="lead">Enter what one release costs your team today. The reductions are Proofline's design targets, to be proven in pilots.</p>
+    <div class="calc">
+      <div>
+        <table>
+          <thead><tr><th>QA stage</th><th>Hours / release</th><th style="text-align:right">Target cut</th></tr></thead>
+          <tbody id="stages"></tbody>
+        </table>
+        <label class="rel">Releases per month <input type="number" id="rpm" value="4" min="0" step="1"></label>
+        <p class="note">Pre-filled with an example team. Replace with yours. Exploratory testing stays human-led, so it gets the smallest cut.</p>
+      </div>
+      <div class="result">
+        <div class="big" id="pct">90%</div>
+        <p class="cap">of repeatable QA hours handed to Proofline</p>
+        <div class="bars">
+          <div class="bar"><span>Today</span><div class="track"><div class="fill" id="b1"></div></div><span class="v" id="v1"></span></div>
+          <div class="bar after"><span>Proofline</span><div class="track"><div class="fill" id="b2"></div></div><span class="v" id="v2"></span></div>
+        </div>
+        <div class="kpis">
+          <div><div class="n" id="k1"></div><p>hours saved per release</p></div>
+          <div><div class="n" id="k2"></div><p>hours saved per year</p></div>
+          <div><div class="n" id="k3"></div><p>including exploratory testing</p></div>
+          <div><div class="n" id="k4"></div><p>human hours left per release</p></div>
+        </div>
+        <div class="leftfor"><p class="cap">Where your team's remaining hours go</p><div id="leftlist"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="tint">
+  <div class="wrap">
+    <h2>Why this is hard to copy</h2>
+    <p class="lead">Any AI can write a test. The hard part is knowing what "correct" means without asking a person every time.</p>
+    <div class="moat">
+      <div>
+        <div class="stack">
+          <div class="layer"><span><b>Intent Ledger</b><p>Every behaviour a human approved, once</p></span><span class="tag">YOUR RULES</span></div>
+          <div class="layer l2"><span><b>Universal rules</b><p>No server errors, user A never sees B's data, accessible, fast enough</p></span><span class="tag">ANY APP</span></div>
+          <div class="layer l3"><span><b>Last good build</b><p>Anything that changed is flagged</p></span><span class="tag">DIFF</span></div>
+          <div class="layer l4"><span><b>Logic relations</b><p>Filter a list and it can only shrink</p></span><span class="tag">RULES</span></div>
+          <div class="layer l5"><span><b>Docs and tickets</b><p>Requirements read and checked</p></span><span class="tag">SPEC</span></div>
+        </div>
+        <p class="stack-cap">The oracle stack: five independent sources of "correct"</p>
+      </div>
+      <div class="moats">
+        <div><span class="ic"><svg class="i"><use href="#i-shield"/></svg></span><span><b>Tests that prove they can fail</b><p>Each test is checked against a planted bug, by a second, independent reviewer.</p></span></div>
+        <div><span class="ic"><svg class="i"><use href="#i-folder"/></svg></span><span><b>Your tests, your code</b><p>Plain Playwright, Appium and k6 files in your repo. No lock-in.</p></span></div>
+        <div><span class="ic"><svg class="i"><use href="#i-coin"/></svg></span><span><b>Paid per change, not per click</b><p>The AI writes once. Replays cost nothing. Budgets cap every project.</p></span></div>
+        <div><span class="ic"><svg class="i"><use href="#i-chart"/></svg></span><span><b>History that compounds</b><p>Every run teaches the triage. Month six is sharper than day one.</p></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="coverage">
+  <div class="wrap">
+    <h2>From smoke test<br><span class="accent">to chaos test.</span></h2>
+    <p class="lead">Five levels of testing in one product. The filled chips are the ones I already ran by hand on Lettera.</p>
+    <div class="stairs">
+      <div class="step"><span class="lvl">Level 1</span><h3>Basics</h3><div class="chips"><span class="chip">Smoke</span><span class="chip">Sanity</span><span class="chip hot">Functional</span><span class="chip hot">Regression</span><span class="chip">Boundary values</span><span class="chip">Equivalence classes</span><span class="chip hot">Form validation</span></div></div>
+      <div class="step"><span class="lvl">Level 2</span><h3>Core</h3><div class="chips"><span class="chip hot">API</span><span class="chip hot">Unit</span><span class="chip">Integration</span><span class="chip">Cross-browser</span><span class="chip">Cross-device</span><span class="chip hot">Test data</span><span class="chip hot">Email flows</span><span class="chip">SMS / OTP</span><span class="chip hot">CI pipeline</span></div></div>
+      <div class="step"><span class="lvl">Level 3</span><h3>Quality</h3><div class="chips"><span class="chip hot">Load</span><span class="chip">Stress</span><span class="chip">Soak</span><span class="chip">Spike</span><span class="chip hot">Dependency scan</span><span class="chip">Code scan</span><span class="chip">Attack scan</span><span class="chip hot">Access control</span><span class="chip hot">Session security</span><span class="chip">Accessibility</span><span class="chip">Visual regression</span><span class="chip">Localisation</span></div></div>
+      <div class="step"><span class="lvl">Level 4</span><h3>Advanced</h3><div class="chips"><span class="chip hot">Mutation</span><span class="chip hot">Flaky detection</span><span class="chip">Contract</span><span class="chip">Property-based</span><span class="chip">Fuzzing</span><span class="chip">Chaos</span><span class="chip">Network faults</span><span class="chip">Upgrade paths</span><span class="chip">Model-based</span><span class="chip">Differential</span><span class="chip">Test impact</span></div></div>
+      <div class="step"><span class="lvl">Level 5</span><h3>Production and beyond</h3><div class="chips"><span class="chip">Synthetic monitoring</span><span class="chip">Canary analysis</span><span class="chip">Feature flags</span><span class="chip">Real user flows</span><span class="chip">AI feature evals</span><span class="chip">Privacy compliance</span><span class="chip">Old app vs new API</span></div></div>
+    </div>
+    <div class="legend"><span><span class="chip hot" style="padding:2px 10px">&nbsp;</span>Run on Lettera during the lessons</span><span><span class="chip" style="padding:2px 10px">&nbsp;</span>Planned in Proofline</span></div>
+  </div>
+</section>
+
+<section class="band" id="roadmap">
+  <div class="wrap">
+    <h2>Proof first. <span class="accent">Then scale.</span></h2>
+    <p class="lead">Every phase ends with a gate it must pass before the next one starts.</p>
+    <div class="road">
+      <div class="phase"><span class="ic"><svg class="i"><use href="#i-flag"/></svg></span><h3>Proof</h3><p>Triage and test maintenance as a GitHub Action, running on Lettera.</p><div class="gate"><span>GATE</span>Triage verdicts match human labels on a real failure set</div></div>
+      <div class="phase"><span class="ic"><svg class="i"><use href="#i-globe"/></svg></span><h3>MVP</h3><p>Web and API. Black-box and code modes. Dashboard, approvals inbox, history.</p><div class="gate"><span>GATE</span>Human hours per release fall sharply on 3 pilot projects</div></div>
+      <div class="phase"><span class="ic"><svg class="i"><use href="#i-shield"/></svg></span><h3>Quality pack</h3><p>Accessibility, visual, performance, security and differential testing.</p><div class="gate"><span>GATE</span>Each pack finds real issues in pilot apps</div></div>
+      <div class="phase"><span class="ic"><svg class="i"><use href="#i-phone"/></svg></span><h3>Mobile</h3><p>Android, then iOS. Contract tests between app versions and the API.</p><div class="gate"><span>GATE</span>Old app versions verified against every new API</div></div>
+      <div class="phase"><span class="ic"><svg class="i"><use href="#i-building"/></svg></span><h3>Desktop and enterprise</h3><p>Windows and macOS apps. SSO, self-hosting, SOC 2.</p><div class="gate"><span>GATE</span>First regulated client live</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="spec">
+  <div class="wrap">
+    <div class="spec-head">
+      <h2>The specification</h2>
+      <div>
+        <p class="lead" style="margin-top:0">The detail behind every claim above. Closed by default, open what you need.</p>
+        <div class="spec-tools" style="margin-top:18px"><button class="btn" id="openall">Open all</button><button class="btn" id="closeall">Close all</button></div>
+      </div>
+    </div>
+    <div class="specs">
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-target"/></svg></span><h3>Scope and the 90% definition</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body two">
+          <div><h4>What 90% means</h4><ul>
+            <li><b>Metric:</b> Human Minutes per Release (HMR), measured per project before and after.</li>
+            <li><b>Applies to repeatable QA work:</b> planning, writing, environments, data, running, triage, maintenance, reporting.</li>
+            <li><b>Exploratory testing</b> stays human-led and AI-assisted. It is reported separately, never hidden inside the 90%.</li>
+            <li><b>Humans keep four touchpoints:</b> grant access, confirm intent, bug or intended, go/no-go.</li>
+          </ul></div>
+          <div><h4>Non-goals</h4><ul>
+            <li>Not a device farm. We integrate with farms rather than rebuild them.</li>
+            <li>Not a screenshot crawler as the main engine. Exploration is budgeted and human-seeded.</li>
+            <li>No write actions against production. Production mode is read-only.</li>
+            <li>Not a replacement for user research. Usability judgement stays with people.</li>
+          </ul></div>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-cube"/></svg></span><h3>Modes and inputs</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body tscroll"><table>
+          <thead><tr><th>Mode</th><th>Inputs</th><th>How the app gets mapped</th><th>Where tests live</th></tr></thead>
+          <tbody>
+            <tr><td>Black box</td><td>URL or build (APK, IPA, EXE, MSI), test logins in a vault, docs, tickets, designs</td><td>Human session recordings, captured network traffic, budgeted guided crawl</td><td>Proofline workspace, exportable</td></tr>
+            <tr><td>Code access</td><td>Repo, CI, tickets, pull request diffs</td><td>Static analysis: routes, API schema, DB schema, env config</td><td>Customer repo, as pull requests</td></tr>
+            <tr><td>Suite rescue</td><td>Existing Selenium, Cypress, Playwright or Appium suite plus its run history</td><td>Imported tests and their history</td><td>Customer repo</td></tr>
+            <tr><td>Production watch</td><td>Live URL, read-only account</td><td>Reuses the app model from other modes</td><td>Proofline schedules</td></tr>
+            <tr><td>Agency workspace</td><td>Many client projects in one organisation</td><td>Per project, any mode above</td><td>Per client, fully isolated</td></tr>
+          </tbody></table></div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-refresh"/></svg></span><h3>Lifecycle: who does what</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body tscroll"><table>
+          <thead><tr><th>Stage</th><th>Proofline does</th><th>A human does</th><th>Target cut</th></tr></thead>
+          <tbody>
+            <tr><td>Plan and design</td><td>Maps the app, ranks risk, drafts test intents from docs, tickets and diffs</td><td>Confirms intents (one click each)</td><td>85%</td></tr>
+            <tr><td>Write tests</td><td>Writes tests at the cheapest level that catches the bug, then proves each one can fail</td><td>Nothing by default</td><td>90%</td></tr>
+            <tr><td>Environment and data</td><td>Builds sandboxes, seeds unique data per run, cleans up</td><td>Grants access once</td><td>90%</td></tr>
+            <tr><td>Run</td><td>Selects tests affected by the change, shards them, runs them deterministically</td><td>Nothing</td><td>98%</td></tr>
+            <tr><td>Triage and report bugs</td><td>Labels product, test or environment; groups by root cause; files tickets with repro steps</td><td>Answers "bug or intended?" when unsure</td><td>90%</td></tr>
+            <tr><td>Maintain</td><td>Updates tests for intended changes as pull requests, quarantines flaky tests</td><td>Reviews a pull request at L2</td><td>90%</td></tr>
+            <tr><td>Report and sign off</td><td>Release readiness score and quality gate</td><td>Optional go/no-go</td><td>90%</td></tr>
+            <tr><td>Exploratory</td><td>Suggests where to look, records sessions, turns them into tests</td><td>Explores</td><td>50%</td></tr>
+          </tbody></table><p class="note">Target cuts are design goals for pilots, not measured results.</p></div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-spark"/></svg></span><h3>AI workers</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body"><div class="tscroll"><table>
+          <thead><tr><th>Worker</th><th>Input</th><th>Output</th><th>Model size</th></tr></thead>
+          <tbody>
+            <tr><td>Mapper</td><td>Repo, recordings, traffic, accessibility tree</td><td>App Model: screens, states, endpoints, roles, flows</td><td>Small</td></tr>
+            <tr><td>Planner</td><td>App Model, docs, tickets, diff</td><td>Risk-ranked test intents</td><td>Large</td></tr>
+            <tr><td>Writer</td><td>Approved intents</td><td>Playwright, Appium, API, k6 test code</td><td>Medium</td></tr>
+            <tr><td>Data builder</td><td>Data schema, test intents</td><td>Seed and cleanup scripts, unique data per run</td><td>Medium</td></tr>
+            <tr><td>Env builder</td><td>Compose files, env schema, migrations</td><td>Sandbox and CI recipe</td><td>Medium</td></tr>
+            <tr><td>Selector</td><td>Diff, coverage map</td><td>The tests this change can affect</td><td>Rules + small</td></tr>
+            <tr><td>Triager</td><td>Failure, trace, logs, diff, history</td><td>Verdict with evidence, root-cause cluster</td><td>Medium, large if unsure</td></tr>
+            <tr><td>Maintainer</td><td>Intended change + broken test</td><td>Fix as a pull request</td><td>Medium</td></tr>
+            <tr><td>Reviewer</td><td>Any new or changed test</td><td>Planted-bug proof, independent second opinion</td><td>Different model</td></tr>
+            <tr><td>Reporter</td><td>Run results</td><td>Readiness score, summaries, ticket text</td><td>Small</td></tr>
+          </tbody></table></div>
+          <div class="two" style="margin-top:22px">
+            <div><h4>Cost control</h4><ul><li>AI runs once per change, never per click</li><li>Smallest model that can do the job, large only for judgement</li><li>Per-project budgets with hard caps, caching of repeated context</li><li>Findings stream out as they happen, so a stopped job still pays</li></ul></div>
+            <div><h4>Quality control</h4><ul><li>Eval harness scores the AI's own triage against human labels</li><li>A different model reviews every test the writer produces</li><li>Silent self-healing is banned: unsure means ask</li><li>Every AI decision is logged with its evidence</li></ul></div>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-layers"/></svg></span><h3>Architecture</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body"><div class="arch">
+          <div class="lyr"><b>Surfaces<span>where people meet it</span></b><div class="chips"><span class="chip">Dashboard</span><span class="chip">Approvals inbox</span><span class="chip">CLI</span><span class="chip">Claude Code / IDE plugin</span><span class="chip">GitHub / GitLab app</span><span class="chip">Slack / Teams</span><span class="chip">Jira / Linear</span><span class="chip">Session recorder</span></div></div>
+          <div class="down"><svg class="i"><use href="#i-down"/></svg></div>
+          <div class="lyr"><b>Control plane<span>plain, deterministic code</span></b><div class="chips"><span class="chip">API</span><span class="chip">SSO, SAML, roles</span><span class="chip">Multi-tenant orgs</span><span class="chip">Durable workflows (Temporal)</span><span class="chip">Policy and budgets</span><span class="chip">Audit log</span><span class="chip">Billing</span></div></div>
+          <div class="down"><svg class="i"><use href="#i-down"/></svg></div>
+          <div class="lyr core"><b>Knowledge layer<span>the core asset</span></b><div class="chips"><span class="chip hot">App Model graph</span><span class="chip hot">Intent Ledger</span><span class="chip hot">Test assets (git)</span><span class="chip hot">Run history</span></div></div>
+          <div class="down"><svg class="i"><use href="#i-down"/></svg></div>
+          <div class="lyr"><b>AI layer<span>judgement only</span></b><div class="chips"><span class="chip">10 workers</span><span class="chip">Model router</span><span class="chip">Budgets and caching</span><span class="chip">PII redaction</span><span class="chip">Prompt-injection guard</span><span class="chip">Eval harness</span></div></div>
+          <div class="down"><svg class="i"><use href="#i-down"/></svg></div>
+          <div class="lyr"><b>Execution plane<span>free, repeatable runs</span></b><div class="chips"><span class="chip">Ephemeral sandboxes (Kubernetes)</span><span class="chip">Browser grid</span><span class="chip">Android emulators</span><span class="chip">iOS simulators on macOS</span><span class="chip">Device-farm adapters</span><span class="chip">Windows / macOS VMs</span><span class="chip">Self-hosted runner</span></div></div>
+          <div class="down"><svg class="i"><use href="#i-down"/></svg></div>
+          <div class="lyr"><b>Data and signals<span>what triage reads</span></b><div class="chips"><span class="chip">Postgres + pgvector</span><span class="chip">ClickHouse run analytics</span><span class="chip">Object storage: video, traces, HAR</span><span class="chip">Redis</span><span class="chip">OpenTelemetry trace id per test step</span></div></div>
+        </div></div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-play"/></svg></span><h3>Execution by platform</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body tscroll"><table>
+          <thead><tr><th>Area</th><th>Engine</th><th>Runs on</th></tr></thead>
+          <tbody>
+            <tr><td>Web</td><td>Playwright: Chromium, Firefox, WebKit</td><td>Containers, browser grid</td></tr>
+            <tr><td>API</td><td>HTTP runner, contract tests (Pact)</td><td>Containers</td></tr>
+            <tr><td>Android</td><td>Appium, Maestro, Espresso import</td><td>Emulators on Linux hosts, device farms</td></tr>
+            <tr><td>iOS</td><td>Appium, XCUITest import</td><td>Simulators on macOS hosts, device farms</td></tr>
+            <tr><td>Desktop</td><td>Appium Windows and Mac drivers, Playwright for Electron</td><td>Windows and macOS VMs</td></tr>
+            <tr><td>Performance</td><td>k6</td><td>Load workers</td></tr>
+            <tr><td>Security</td><td>OWASP ZAP, Semgrep, OSV-Scanner, Gitleaks, access-control matrix</td><td>Containers</td></tr>
+            <tr><td>Accessibility</td><td>axe-core against WCAG 2.2</td><td>Inside UI runs</td></tr>
+            <tr><td>Visual</td><td>Pixel and perceptual screenshot diff</td><td>Inside UI runs</td></tr>
+            <tr><td>Messaging</td><td>Captured email, SMS and OTP inboxes</td><td>Sandbox services</td></tr>
+            <tr><td>Resilience</td><td>Network shaping and fault injection, service mocks</td><td>Sandbox proxy</td></tr>
+          </tbody></table></div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-db"/></svg></span><h3>Core data model</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body two">
+          <div><h4>Workspace</h4><ul><li><b>Organisation</b> → Projects → Environments → Builds</li><li><b>App Model:</b> Screens, States, Endpoints, Entities, Roles, Flows</li><li><b>Intent:</b> approved behaviour, linked to a Requirement</li><li><b>Test asset:</b> code file in git, linked to Intents</li></ul></div>
+          <div><h4>Runs</h4><ul><li><b>Run</b> → Step results → Artifacts (video, trace, HAR, logs)</li><li><b>Failure</b> → Cluster (root cause) → Verdict (product, test, environment)</li><li><b>Approval:</b> the four human touchpoints, with who and when</li><li><b>Ticket, Budget, Audit event</b></li></ul></div>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-lock"/></svg></span><h3>Security, privacy and deployment</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body two">
+          <div><h4>Protection</h4><ul><li>Tenant isolation at the database row level</li><li>Test logins live in a vault and reach the AI only as a handle, never as a value</li><li>PII redacted before any model call</li><li>Content from the app under test is data, never instructions</li><li>No destructive actions against production</li><li>Full audit log of every AI and human decision</li></ul></div>
+          <div><h4>Deployment</h4><ul><li><b>SaaS:</b> fastest start</li><li><b>Hybrid:</b> cloud brain, runner inside the client network</li><li><b>Self-hosted:</b> for regulated clients</li><li>SSO, SAML, SCIM, role-based access</li><li>Data residency, bring-your-own model key</li><li>SOC 2 Type II track</li></ul></div>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-link"/></svg></span><h3>Integrations</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body"><div class="chips">
+          <span class="chip">GitHub</span><span class="chip">GitLab</span><span class="chip">Bitbucket</span><span class="chip">Azure DevOps</span><span class="chip">GitHub Actions</span><span class="chip">GitLab CI</span><span class="chip">Jenkins</span><span class="chip">CircleCI</span><span class="chip">Jira</span><span class="chip">Linear</span><span class="chip">Slack</span><span class="chip">Microsoft Teams</span><span class="chip">Device farms</span><span class="chip">OpenTelemetry</span><span class="chip">Error trackers</span><span class="chip">Test case managers (import)</span><span class="chip">Claude Code</span>
+        </div></div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-chart"/></svg></span><h3>How success is measured</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body tscroll"><table>
+          <thead><tr><th>Metric</th><th>Definition</th><th>Target</th></tr></thead>
+          <tbody>
+            <tr><td>Human minutes per release</td><td>Time people spend on QA for one release</td><td>90% lower on repeatable work</td></tr>
+            <tr><td>Triage agreement</td><td>AI verdict matches a human's label</td><td>95% or better</td></tr>
+            <tr><td>False alarms</td><td>Failures reported as bugs that were not</td><td>Under 5%</td></tr>
+            <tr><td>Escaped defects</td><td>Production bugs a test could have caught</td><td>Falling every quarter</td></tr>
+            <tr><td>Flaky rate</td><td>Runs with a pass-then-fail on unchanged code</td><td>Under 1%</td></tr>
+            <tr><td>Planted-bug score</td><td>Share of planted bugs caught on critical flows</td><td>80% or better</td></tr>
+            <tr><td>Change to verdict</td><td>Pull request opened to quality verdict</td><td>Minutes, not hours</td></tr>
+            <tr><td>AI cost per change</td><td>Model spend per pull request or build</td><td>Under the project budget, always</td></tr>
+          </tbody></table><p class="note">All targets are design goals to be validated in pilots.</p></div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-coin"/></svg></span><h3>Business shape</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body two">
+          <div><h4>Who buys</h4><ul><li><b>Software agencies:</b> many client apps, often no code access</li><li><b>SaaS teams</b> with no dedicated QA staff</li><li><b>QA service firms</b> that bill for manual regression today</li><li><b>Enterprise QA teams</b> buried in maintenance</li></ul></div>
+          <div><h4>How it's priced</h4><ul><li>Per project, plus usage: run minutes, device minutes, AI credits</li><li>Managed QA tier for agencies and service firms</li><li>Self-hosted licence for regulated clients</li></ul></div>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="ic"><svg class="i"><use href="#i-alert"/></svg></span><h3>Risks and answers</h3><span class="pm"><svg class="i" style="width:16px;height:16px"><use href="#i-plus"/></svg></span></summary>
+        <div class="body tscroll"><table>
+          <thead><tr><th>Risk</th><th>Answer</th></tr></thead>
+          <tbody>
+            <tr><td>The AI doesn't know what "correct" is</td><td>Oracle stack: Intent Ledger, universal rules, last-good-build diff, logic relations, docs</td></tr>
+            <tr><td>AI cost grows with use</td><td>AI per change, not per click. Small models first. Hard budgets.</td></tr>
+            <tr><td>Tests that pass on broken code</td><td>Planted-bug proof and an independent reviewer model</td></tr>
+            <tr><td>The app under test tries to steer the AI</td><td>App content is treated as data, never as instructions</td></tr>
+            <tr><td>Client data privacy</td><td>Redaction, vault handles, hybrid and self-hosted options</td></tr>
+            <tr><td>iOS device cost</td><td>Simulators first, device-farm adapters for real hardware</td></tr>
+            <tr><td>Larger players add AI features</td><td>Any-access coverage, tests as customer-owned code, compounding history</td></tr>
+          </tbody></table></div>
+      </details>
+
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="Proofline home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="1" width="38" height="38" rx="7" fill="var(--ink)"/><path d="M7 23h9l4 5 13-16" fill="none" stroke="var(--accent)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Proofline</span></a>
+    <span>Concept and specification · Rupam Bhakta · October 2026</span>
+    <span>Lettera figures measured 10 to 12 Oct 2026. Reductions are targets.</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // The loop diagram
+  var steps=[
+    ['Connect','i-plug','Repo, build or URL','i-key'],
+    ['Map','i-map','App Model'],
+    ['Plan','i-target','Risk-ranked intents','i-target'],
+    ['Generate','i-pen','Self-checked tests'],
+    ['Provision','i-server','Sandbox + clean data'],
+    ['Run','i-play','Only affected tests'],
+    ['Triage','i-funnel','Product, test or env'],
+    ['Act','i-bug','Tickets and fix PRs','i-scale'],
+    ['Gate','i-signal','Release readiness','i-signal'],
+    ['Learn','i-refresh','History sharpens triage']
+  ];
+  var NS='http://www.w3.org/2000/svg', svg=document.getElementById('loopsvg'), cx=320, cy=330, R=230, LR=292;
+  function el(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e}
+  el('circle',{cx:cx,cy:cy,r:R,fill:'none',stroke:'var(--line)','stroke-width':3});
+  for(var i=0;i<10;i++){
+    var a=(-90+i*36+18)*Math.PI/180, x=cx+R*Math.cos(a), y=cy+R*Math.sin(a), deg=(-90+i*36+18)+90;
+    el('path',{d:'M-7,-6 L5,0 L-7,6',fill:'none',stroke:'var(--muted)','stroke-width':2.4,'stroke-linecap':'round','stroke-linejoin':'round',transform:'translate('+x.toFixed(1)+','+y.toFixed(1)+') rotate('+deg+')'});
+  }
+  steps.forEach(function(s,i){
+    var a=(-90+i*36)*Math.PI/180, x=cx+R*Math.cos(a), y=cy+R*Math.sin(a), lx=cx+LR*Math.cos(a), ly=cy+LR*Math.sin(a);
+    var human=!!s[3];
+    el('circle',{cx:x,cy:y,r:36,fill:'var(--paper)',stroke:human?'var(--accent)':'var(--ink)','stroke-width':human?3:1.5});
+    el('use',{href:'#'+s[1],x:x-15,y:y-15,width:30,height:30,fill:'none',stroke:'var(--ink)','stroke-width':1.8,'stroke-linecap':'round','stroke-linejoin':'round'});
+    if(human){
+      el('circle',{cx:x+27,cy:y-27,r:15,fill:'var(--accent)'});
+      el('use',{href:'#i-user',x:x+19,y:y-35,width:16,height:16,fill:'none',stroke:'var(--on-accent)','stroke-width':2.2,'stroke-linecap':'round'});
+    }
+    var c=Math.cos(a), anchor=Math.abs(c)<.2?'middle':(c>0?'start':'end');
+    var dy=Math.abs(c)<.2?(Math.sin(a)<0?-14:16):0;
+    var t=el('text',{x:lx,y:ly+dy,'text-anchor':anchor,'font-size':25,'font-weight':600}); t.textContent=s[0];
+    var t2=el('text',{x:lx,y:ly+dy+24,'text-anchor':anchor,'font-size':18,fill:'var(--muted)'}); t2.textContent=s[2];
+  });
+  var c1=el('text',{x:cx,y:cy-6,'text-anchor':'middle','font-size':40,style:'font-family:var(--serif)'}); c1.textContent='AI once per change';
+  var c2=el('text',{x:cx,y:cy+32,'text-anchor':'middle','font-size':17,fill:'var(--muted)'}); c2.textContent='Runners replay for free';
+  var c3=el('circle',{cx:cx-86,cy:cy+70,r:9,fill:'var(--accent)'});
+  var c4=el('text',{x:cx-70,y:cy+76,'font-size':15,fill:'var(--muted)'}); c4.textContent='= a human touchpoint';
+  // Mobile list version
+  var list=document.getElementById('looplist');
+  steps.forEach(function(s){
+    var d=document.createElement('div'); d.className='touch';
+    d.innerHTML='<div><span class="ic" style="background:'+(s[3]?'var(--accent)':'var(--ink)')+'"><svg class="i"><use href="#'+s[1]+'"/></svg></span><span><b>'+s[0]+'</b><p>'+s[2]+(s[3]?' · human touchpoint':'')+'</p></span></div>';
+    list.appendChild(d);
+  });
+
+  // Hours calculator
+  var stages=[['Plan and design',8,.85],['Write tests',16,.90],['Environment and data',6,.90],['Run regression',10,.98],['Triage and bug reports',8,.90],['Maintain tests',12,.90],['Report and sign-off',4,.90],['Exploratory',6,.50,true]];
+  var tb=document.getElementById('stages');
+  stages.forEach(function(s,i){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+s[0]+'</td><td><input type="number" min="0" step="1" value="'+s[1]+'" data-i="'+i+'" aria-label="Hours per release for '+s[0]+'"></td><td class="t">'+Math.round(s[2]*100)+'%</td>';
+    tb.appendChild(tr);
+  });
+  function fmt(n){return n>=100?Math.round(n).toLocaleString():(Math.round(n*10)/10).toString()}
+  function calc(){
+    var before=0,after=0,repB=0,repA=0,lefts=[];
+    tb.querySelectorAll('input').forEach(function(inp){
+      var s=stages[+inp.dataset.i], h=Math.max(0,parseFloat(inp.value)||0), left=h*(1-s[2]);
+      before+=h; after+=left; if(!s[3]){repB+=h;repA+=left}
+      if(left>0)lefts.push([s[0],left]);
+    });
+    lefts.sort(function(a,b){return b[1]-a[1]});
+    var top=lefts.length?lefts[0][1]:1;
+    document.getElementById('leftlist').innerHTML=lefts.slice(0,4).map(function(l){
+      return '<div><span>'+l[0]+'</span><i style="width:'+(l[1]/top*100)+'%"></i><span>'+fmt(l[1])+' h</span></div>';
+    }).join('');
+    var rpm=Math.max(0,parseFloat(document.getElementById('rpm').value)||0), saved=before-after;
+    document.getElementById('pct').textContent=repB?Math.round((repB-repA)/repB*100)+'%':'0%';
+    document.getElementById('b1').style.width=before?'100%':'0';
+    document.getElementById('b2').style.width=before?(after/before*100)+'%':'0';
+    document.getElementById('v1').textContent=fmt(before)+' h';
+    document.getElementById('v2').textContent=fmt(after)+' h';
+    document.getElementById('k1').textContent=fmt(saved);
+    document.getElementById('k2').textContent=fmt(saved*rpm*12);
+    document.getElementById('k3').textContent=before?Math.round(saved/before*100)+'%':'0%';
+    document.getElementById('k4').textContent=fmt(after);
+  }
+  document.querySelector('.calc').addEventListener('input',calc); calc();
+
+  // Spec controls
+  var ds=document.querySelectorAll('details');
+  document.getElementById('openall').onclick=function(){ds.forEach(function(d){d.open=true})};
+  document.getElementById('closeall').onclick=function(){ds.forEach(function(d){d.open=false})};
+  window.addEventListener('beforeprint',function(){ds.forEach(function(d){d.open=true})});
+})();
+</script>
+</body>
+</html>

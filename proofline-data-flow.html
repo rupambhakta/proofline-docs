@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proofline Data Flow</title>
+<meta name="description" content="High-level data flow of Proofline: every surface, worker, store and runner on one animated diagram, with a step-by-step player.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --canvas:#F6F5F1; --paper:#FFFFFF; --tint:#ECEAE3; --ink:#16181D; --muted:#545962; --line:#D8D5CB;
+  --accent:#B93D0B; --accent-soft:#F7E1D5; --on-accent:#FFFFFF;
+  --band:#16181D; --band-ink:#F2F0EA; --band-muted:#A9ADB5; --band-line:#30343C; --band-accent:#FF9257;
+  --grid:rgba(22,24,29,.055);
+  --serif:"Instrument Serif",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --nav:68px; --r:6px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --canvas:#121418; --paper:#1D2026; --tint:#181B20; --ink:#ECEAE5; --muted:#A3A8B1; --line:#343943;
+    --accent:#FF9257; --accent-soft:#3A2418; --on-accent:#16181D;
+    --band:#0A0B0E; --band-line:#272A31; --grid:rgba(255,255,255,.04);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--nav) + 8px)}
+body{margin:0;background:var(--canvas);color:var(--ink);font:400 17px/1.55 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{font-family:var(--serif);font-weight:400;line-height:1.05;margin:0;letter-spacing:-.01em}
+h2{font-size:clamp(2.3rem,5vw,3.6rem)}
+p{margin:0}
+.wrap{max-width:1240px;margin:0 auto;padding:0 32px}
+.wide{max-width:1600px;margin:0 auto;padding:0 24px}
+.accent{color:var(--accent)}
+.lead{font-size:1.15rem;color:var(--muted);max-width:46ch}
+svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+section{padding:104px 0}
+.band{background:var(--band);color:var(--band-ink)}
+.band .lead{color:var(--band-muted)}
+.band .accent{color:var(--band-accent)}
+.gridbg{background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:32px 32px}
+
+/* nav */
+nav{position:sticky;top:0;z-index:30;height:var(--nav);background:color-mix(in srgb,var(--canvas) 92%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+nav .wrap{height:100%;display:flex;align-items:center;justify-content:space-between;gap:24px;max-width:1600px}
+.logo{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none}
+.logo svg{width:40px;height:40px}
+.logo span{font-family:var(--serif);font-size:2rem;line-height:1}
+.logo small{font-family:var(--mono);font-size:.72rem;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 6px;margin-left:4px}
+.navlinks{display:flex;gap:22px;font-size:.92rem}
+.navlinks a{color:var(--muted);text-decoration:none}
+.navlinks a:hover{color:var(--ink)}
+.navlinks a.go{color:var(--accent);font-weight:600}
+
+/* hero */
+.hero{min-height:calc(100svh - var(--nav));padding:36px 0 40px}
+.intro{display:grid;grid-template-columns:1fr auto;gap:40px;align-items:end;max-width:1600px;margin:0 auto;padding:0 24px}
+.hero h1{font-size:clamp(2.6rem,5vw,4.4rem)}
+.hero h1 em{color:var(--accent)}
+.key{display:flex;gap:22px;flex-wrap:wrap;font-size:.86rem;color:var(--muted);margin-top:14px}
+.key span{display:inline-flex;align-items:center;gap:8px}
+.key i{display:inline-block;width:28px;height:0;border-top:2px dashed var(--muted)}
+.key i.on{border-top:2.5px dashed var(--accent)}
+.key i.zone{width:18px;height:12px;border:1.5px dashed var(--muted);border-radius:2px}
+
+/* player */
+.player{position:sticky;top:var(--nav);z-index:20;background:color-mix(in srgb,var(--canvas) 94%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);margin-top:24px}
+.player .wide{display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;padding-top:12px;padding-bottom:12px}
+.ctl{display:flex;gap:6px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;font:500 .88rem var(--sans);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer}
+.btn svg.i{width:17px;height:17px}
+.btn:hover{border-color:var(--ink)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+.btn.play{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cap{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:baseline;min-height:48px}
+.cap .cnt{font-family:var(--mono);font-size:.74rem;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+.cap b{font-family:var(--serif);font-weight:400;font-size:1.45rem;line-height:1}
+.cap p{grid-column:1 / -1;font-size:.95rem;color:var(--muted);max-width:110ch}
+
+/* diagram */
+.stagebox{margin-top:18px}
+.scroller{border:1px solid var(--line);border-radius:var(--r);background:var(--canvas)}
+#dfd{display:block;width:100%;height:auto;font-family:var(--sans)}
+#stage:fullscreen{background:var(--canvas);display:flex;flex-direction:column;overflow:hidden}
+#stage:fullscreen .player{position:static;margin-top:0}
+#stage:fullscreen .stagebox{flex:1;min-height:0;width:100%;max-width:none;margin-top:10px;padding-bottom:14px}
+#stage:fullscreen .scroller{height:100%;overflow:hidden}
+#stage:fullscreen #dfd{width:100%;height:100%;min-width:0}
+#stage:fullscreen .hint{display:none}
+.hint{display:none;font-size:.85rem;color:var(--muted);margin-top:8px}
+#dfd .zone{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-dasharray:7 6}
+#dfd .zone.core{stroke:var(--ink);stroke-dasharray:none}
+#dfd .zl{font:500 13px var(--mono);letter-spacing:.08em;fill:var(--muted)}
+#dfd .grp rect{fill:var(--tint);stroke:none}
+#dfd .grp.know rect{stroke:var(--accent);stroke-width:1.5}
+#dfd .gt{font:600 16px var(--sans);fill:var(--ink)}
+#dfd .gn{font:400 13px var(--sans);fill:var(--muted)}
+#dfd .stg{font:500 11.5px var(--mono);letter-spacing:.08em;fill:var(--muted)}
+#dfd .ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--accent)}
+#dfd .grp .ic{color:var(--ink)}
+#dfd .n{transition:opacity .35s}
+#dfd .n .box{fill:var(--paper);stroke:var(--line);stroke-width:1.3;transition:stroke .35s}
+#dfd .nt{font:600 17px var(--sans);fill:var(--ink)}
+#dfd .ns{font:400 13px var(--sans);fill:var(--muted)}
+#dfd .ct{font:600 13.5px var(--sans);fill:var(--ink)}
+#dfd .tier{font:500 12px var(--mono);fill:var(--muted)}
+#dfd .note{font:400 13px var(--sans);fill:var(--muted)}
+#dfd .fl{fill:none;stroke:var(--muted);stroke-width:1.6;stroke-dasharray:5 5;marker-end:url(#ah);animation:flow 1.6s linear infinite;transition:opacity .35s}
+#dfd .pl{font:500 12px var(--mono);fill:var(--muted);paint-order:stroke;stroke:var(--canvas);stroke-width:4px;stroke-linejoin:round;transition:opacity .35s}
+#dfd .dot{fill:var(--accent);stroke:var(--canvas);stroke-width:2}
+@keyframes flow{to{stroke-dashoffset:-20}}
+#dfd.focus .n{opacity:.25}
+#dfd.focus .fl,#dfd.focus .pl{opacity:.1}
+#dfd.focus .n.on,#dfd.focus .fl.on,#dfd.focus .pl.on{opacity:1}
+#dfd.focus .n.on .box{stroke:var(--accent);stroke-width:2.2}
+#dfd.focus .fl.on{stroke:var(--accent);stroke-width:2.4;marker-end:url(#ah-on);animation-duration:.7s}
+#dfd.focus .pl.on{fill:var(--accent)}
+
+/* steps */
+.steps-head{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:end}
+.steplist{display:grid;grid-template-columns:1fr 1fr;column-gap:64px;margin-top:52px;border-top:1px solid var(--band-line)}
+.steplist button{all:unset;cursor:pointer;display:grid;grid-template-columns:44px 1fr auto;gap:18px;padding:26px 0;border-bottom:1px solid var(--band-line);align-items:start}
+.steplist button:focus-visible{outline:2px solid var(--band-accent);outline-offset:4px}
+.steplist .i{width:30px;height:30px;color:var(--band-accent)}
+.steplist b{display:block;font-family:var(--serif);font-weight:400;font-size:1.65rem;line-height:1.1}
+.steplist p{color:var(--band-muted);font-size:.95rem;margin-top:6px}
+.steplist .go{font-family:var(--mono);font-size:.74rem;color:var(--band-accent);white-space:nowrap;padding-top:8px}
+.steplist button:hover b{color:var(--band-accent)}
+
+/* glossary */
+.gl{margin-top:48px;border-top:2px solid var(--ink)}
+.gl > div{display:grid;grid-template-columns:240px 1fr;gap:32px;padding:24px 0;border-bottom:1px solid var(--line)}
+.gl h3{font-size:1.7rem;display:flex;gap:10px;align-items:center}
+.gl h3 .i{color:var(--accent)}
+.gl ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:10px 40px}
+.gl li{font-size:.95rem;color:var(--muted)}
+.gl li b{color:var(--ink);font-weight:600}
+
+footer{padding:52px 0;border-top:1px solid var(--line);font-size:.9rem;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+footer a{color:var(--accent)}
+
+@media (prefers-reduced-motion:reduce){#dfd .fl{animation:none}html{scroll-behavior:auto}}
+@media (max-width:1080px){
+  .intro,.steps-head{grid-template-columns:1fr}
+  .player .wide{grid-template-columns:1fr}
+  .navlinks a:not(.go){display:none}
+}
+@media (max-width:760px){
+  body{font-size:16px}
+  .wrap,.wide,.intro{padding-left:16px;padding-right:16px}
+  section{padding:72px 0}
+  .logo span{font-size:1.7rem}
+  .logo small{display:none}
+  .player{position:static}
+  .scroller{overflow-x:auto}
+  #dfd{min-width:1040px}
+  .hint{display:block}
+  .steplist{grid-template-columns:1fr}
+  .steplist button{grid-template-columns:36px 1fr}
+  .steplist .go{display:none}
+  .gl > div{grid-template-columns:1fr;gap:14px}
+  .gl ul{grid-template-columns:1fr}
+}
+@media print{nav,.player{position:static}.hero{min-height:0}#dfd .fl{animation:none}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-git" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="9" r="2.2"/><path d="M6 7.2v9.6M18 11.2c0 4-6 3-11 5.8"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="1.5"/><path d="M15.5 10.5L21.5 7v10l-6-3.5z"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
+  <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="13" rx="1.5"/><path d="M8 4h11.5A1.5 1.5 0 0 1 21 5.5V17"/><path d="M6.5 13.5l2 2 4-4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V11M10 20V5M16 20v-7M3 20h18"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4.5M12 17.5h.01"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M7 9.5l3 2.5-3 2.5M12.5 15H17"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.2"/><rect x="3" y="13" width="18" height="7" rx="1.2"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3M7 15h10"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6.5h6l2 2h10V19H3z"/><path d="M10 12.5l-2 2 2 2M14 12.5l2 2-2 2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5l12.5 7.5L7 19.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-box-plus" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.5A4 4 0 0 1 17.5 18z"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2M10 21v-3h4v3"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2.5V8M15 2.5V8M6 8h12v3a6 6 0 0 1-12 0zM12 17v4.5"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 3v18M7 21h10M4 7h16M4 7l-2.5 6a2.5 2.5 0 0 0 5 0zM20 7l-2.5 6a2.5 2.5 0 0 0 5 0z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></symbol>
+</svg>
+
+<nav>
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="Proofline data flow, top">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="1" width="38" height="38" rx="7" fill="var(--ink)"/><path d="M7 23h9l4 5 13-16" fill="none" stroke="var(--accent)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Proofline</span><small>DATA FLOW</small>
+    </a>
+    <div class="navlinks">
+      <a href="#top">Diagram</a>
+      <a href="#steps">Six steps</a>
+      <a href="#nodes">Every node</a>
+      <a class="go" href="proofline-build-plan.html">Build plan</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero gridbg" id="top">
+  <div class="intro">
+    <div>
+      <h1>How data moves <em>through Proofline.</em></h1>
+      <div class="key">
+        <span><i class="zone"></i>Trust zone</span>
+        <span><i></i>Data flow</span>
+        <span><i class="on"></i>Flow in the current step</span>
+        <span>S, M, L = small, medium, large model</span>
+      </div>
+    </div>
+    <p class="lead">Every node from the build plan on one diagram. Press Play, or pick a step, to follow one change from pull request to verdict.</p>
+  </div>
+
+  <div id="stage">
+  <div class="player">
+    <div class="wide">
+      <button class="btn play" id="play" type="button" aria-label="Play the steps"><svg class="i"><use href="#i-play"/></svg><span>Play</span></button>
+      <div class="cap" aria-live="polite"><span class="cnt" id="cnt">Overview</span><b id="ctitle"></b><p id="ctext"></p></div>
+      <button class="btn fitbtn" id="fit" type="button" aria-pressed="false"><svg class="i"><use href="#i-fit"/></svg><span>Full screen</span></button>
+    </div>
+    <div class="wide" style="padding-top:0">
+      <div class="ctl" id="ctl" role="group" aria-label="Choose a step"></div>
+    </div>
+  </div>
+
+  <div class="wide stagebox">
+    <div class="scroller"><svg id="dfd" viewBox="0 0 1600 1000" role="img" aria-label="Proofline data flow: your side, Proofline cloud and the model provider, with every surface, worker, store and runner and the flows between them"></svg></div>
+    <p class="hint">Swipe sideways to see the whole diagram. The six steps below explain it in order.</p>
+  </div>
+  </div>
+</header>
+
+<section class="band" id="steps">
+  <div class="wrap">
+    <div class="steps-head"><h2>Explain it in<br><span class="accent">six steps</span></h2><p class="lead">The order to walk someone through it. Click a step to light it up in the diagram.</p></div>
+    <div class="steplist" id="steplist"></div>
+  </div>
+</section>
+
+<section class="gridbg" id="nodes">
+  <div class="wrap">
+    <h2>Every node,<br><span class="accent">one line each</span></h2>
+    <div class="gl">
+      <div><h3><svg class="i"><use href="#i-building"/></svg>Your side</h3><ul>
+        <li><b>You:</b> answer cards and make the final calls</li>
+        <li><b>Code + PR:</b> your repo; a pull request starts a run</li>
+        <li><b>Docs + tickets:</b> specs and stories the Planner reads</li>
+        <li><b>Recorder:</b> records real sessions and network traffic</li>
+        <li><b>Your app:</b> the URL or build under test</li>
+      </ul></div>
+      <div><h3><svg class="i"><use href="#i-cards"/></svg>Surfaces</h3><ul>
+        <li><b>Approvals inbox:</b> one-click cards with the evidence attached</li>
+        <li><b>Dashboard:</b> results, trends and release readiness</li>
+        <li><b>GitHub app:</b> PR checks, comments and fix PRs</li>
+        <li><b>Tickets + chat:</b> bug reports and alerts in Jira, Linear, Slack</li>
+        <li><b>CLI + IDE:</b> start a run from the terminal or Claude Code</li>
+        <li><b>Orchestrator:</b> starts every job, enforces budgets and approvals, keeps the audit log</li>
+      </ul></div>
+      <div><h3><svg class="i"><use href="#i-spark"/></svg>AI workers</h3><ul>
+        <li><b>Mapper:</b> builds the App Model from code, recordings and traffic</li>
+        <li><b>Planner:</b> picks what to test, riskiest first</li>
+        <li><b>Writer:</b> writes tests at the cheapest level that works</li>
+        <li><b>Reviewer:</b> checks the Writer's tests on a different model</li>
+        <li><b>Data builder:</b> makes the test data each test needs</li>
+        <li><b>Env builder:</b> builds the throwaway sandbox</li>
+        <li><b>Selector:</b> picks only the tests a change affects</li>
+        <li><b>Triager:</b> names the cause of each failure</li>
+        <li><b>Maintainer:</b> repairs tests after an intended change</li>
+        <li><b>Reporter:</b> turns verdicts into comments, tickets and reports</li>
+      </ul></div>
+      <div><h3><svg class="i"><use href="#i-shield"/></svg>AI gateway</h3><ul>
+        <li><b>PII redaction:</b> removes personal data before any model call</li>
+        <li><b>Injection guard:</b> app content is data, never instructions</li>
+        <li><b>Context cache:</b> same question and context, saved answer</li>
+        <li><b>Model router:</b> smallest model that can do the job</li>
+        <li><b>Eval harness:</b> scores every worker on known answers</li>
+      </ul></div>
+      <div><h3><svg class="i"><use href="#i-db"/></svg>Knowledge</h3><ul>
+        <li><b>App Model:</b> screens, endpoints, data and roles</li>
+        <li><b>Intent Ledger:</b> behaviours a person confirmed once</li>
+        <li><b>Test assets:</b> plain test code in git, owned by you</li>
+        <li><b>Run history:</b> every result and timing, kept</li>
+      </ul></div>
+      <div><h3><svg class="i"><use href="#i-play"/></svg>Execution</h3><ul>
+        <li><b>Sandbox:</b> your app plus fresh data, deleted after the run</li>
+        <li><b>Runners:</b> Playwright, Appium, k6, ZAP, axe</li>
+        <li><b>Evidence:</b> video, traces, network and backend logs</li>
+      </ul></div>
+      <div><h3><svg class="i"><use href="#i-cloud"/></svg>Model provider</h3><ul>
+        <li><b>Small model:</b> navigate, classify, summarise</li>
+        <li><b>Medium model:</b> write tests, triage, fix</li>
+        <li><b>Large model:</b> plan risk, review, hard calls</li>
+        <li><b>Your own key:</b> optional, or a private endpoint</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Proofline data flow. Companion to the <a href="proofline-build-plan.html">build plan</a> and the <a href="proofline.html">concept</a>.</span>
+    <span>Worker model sizes and the stack are proposals.</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('dfd');
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const STEPS = [
+  {t:'Everything at once', ic:'i-layers', b:'All', x:'Every node and every flow. Pick a step, or press Play, to follow one change through the system.'},
+  {t:'Connect and map', ic:'i-plug', b:'Connect', x:'A pull request or a CLI command starts a job. Docs and recordings feed the Planner and the Mapper. The Mapper builds the App Model.'},
+  {t:'Plan and write', ic:'i-pen', b:'Plan + write', x:'The Planner reads the App Model and the Intent Ledger and picks the riskiest areas. The Writer writes tests, the Reviewer checks them on a different model, and they are saved as code.'},
+  {t:'Set up and run', ic:'i-play', b:'Run', x:'A throwaway sandbox gets your app and fresh test data. The Selector picks only the tests this change needs. Runners play them and save the evidence. No AI cost in this step.'},
+  {t:'Judge', ic:'i-scale', b:'Judge', x:'For each failure, the Triager reads the evidence, the run history and the Intent Ledger. It answers product bug, test problem, environment or flaky, with a confidence score.'},
+  {t:'Act', ic:'i-check', b:'Act', x:'Intended change: the Maintainer opens a fix PR. Product bug: the Reporter files a ticket with the evidence. Unsure: a one-click card goes to you, and your answer is saved to the Intent Ledger.'},
+  {t:'Every AI call', ic:'i-shield', b:'AI calls', x:'Personal data is removed, app content is marked as data, and the cache is checked first. The router sends the rest to the smallest model that can do it. The eval harness keeps scoring every worker.'}
+];
+
+const ZONES = [
+  {x:16, y:16, w:228, h:968, l:'YOUR SIDE'},
+  {x:264, y:16, w:1080, h:968, l:'PROOFLINE CLOUD', core:true},
+  {x:1364, y:16, w:220, h:968, l:'MODEL PROVIDER'}
+];
+
+const GROUPS = [
+  {x:288, y:252, w:820, h:300, t:'AI workers', ic:'i-spark'},
+  {x:1132, y:252, w:192, h:226, t:'AI gateway', ic:'i-shield'},
+  {x:288, y:610, w:1036, h:136, t:'Knowledge layer', ic:'i-db', n:'What Proofline knows about each app', know:true, tx:300},
+  {x:288, y:776, w:1036, h:156, t:'Execution', ic:'i-play', n:'Replays cost compute, not AI'}
+];
+
+const STAGES = [['UNDERSTAND',304],['BUILD',469],['CHOOSE',634],['JUDGE',799],['ACT',964]];
+
+// k: node | chip | gchip | bar
+const NODES = [
+  {id:'you', k:'node', x:34, y:80, w:192, h:64, t:'You', s:['Approve and decide'], ic:'i-user', st:[5]},
+  {id:'code', k:'node', x:34, y:236, w:192, h:64, t:'Code + PR', s:['Your repo on GitHub'], ic:'i-git', st:[1]},
+  {id:'docs', k:'node', x:34, y:316, w:192, h:64, t:'Docs + tickets', s:['Specs, stories, designs'], ic:'i-doc', st:[1]},
+  {id:'rec', k:'node', x:34, y:396, w:192, h:64, t:'Recorder', s:['Sessions + traffic'], ic:'i-video', st:[1]},
+  {id:'app', k:'node', x:34, y:846, w:192, h:64, t:'Your app', s:['URL or build'], ic:'i-globe', st:[3]},
+
+  {id:'inbox', k:'node', x:288, y:72, w:200, h:64, t:'Approvals inbox', s:['One-click cards'], ic:'i-cards', st:[5]},
+  {id:'dash', k:'node', x:508, y:72, w:200, h:64, t:'Dashboard', s:['Results and readiness'], ic:'i-chart', st:[5]},
+  {id:'gh', k:'node', x:728, y:72, w:200, h:64, t:'GitHub app', s:['PR checks, fix PRs'], ic:'i-git', st:[5]},
+  {id:'tk', k:'node', x:948, y:72, w:200, h:64, t:'Tickets + chat', s:['Jira, Linear, Slack'], ic:'i-alert', st:[5]},
+  {id:'cli', k:'node', x:1168, y:72, w:156, h:64, t:'CLI + IDE', s:['Start a run'], ic:'i-term', st:[1]},
+
+  {id:'orch', k:'bar', x:288, y:168, w:1036, h:52, t:'Orchestrator', s:'Starts every job, enforces budgets and approvals, writes the audit log', ic:'i-server', st:[1,5]},
+
+  {id:'planner', k:'chip', x:304, y:326, t:'Planner', tier:'L', st:[1,2]},
+  {id:'mapper', k:'chip', x:304, y:392, t:'Mapper', tier:'S', st:[1,2]},
+  {id:'writer', k:'chip', x:469, y:326, t:'Writer', tier:'M', st:[2]},
+  {id:'datab', k:'chip', x:469, y:392, t:'Data builder', tier:'M', st:[3]},
+  {id:'envb', k:'chip', x:469, y:458, t:'Env builder', tier:'M', st:[3]},
+  {id:'sel', k:'chip', x:634, y:392, t:'Selector', tier:'S', st:[3]},
+  {id:'tri', k:'chip', x:799, y:326, t:'Triager', tier:'M→L', st:[4,5]},
+  {id:'rev', k:'chip', x:799, y:392, t:'Reviewer', tier:'L*', st:[2]},
+  {id:'maint', k:'chip', x:964, y:326, t:'Maintainer', tier:'M', st:[5]},
+  {id:'rep', k:'chip', x:964, y:392, t:'Reporter', tier:'S', st:[5]},
+
+  {id:'pii', k:'gchip', x:1144, y:294, t:'PII redaction', st:[6]},
+  {id:'inj', k:'gchip', x:1144, y:340, t:'Injection guard', st:[6]},
+  {id:'cache', k:'gchip', x:1144, y:386, t:'Context cache', st:[6]},
+  {id:'router', k:'gchip', x:1144, y:432, t:'Model router', st:[6]},
+  {id:'eval', k:'node', x:1132, y:490, w:192, h:62, t:'Eval harness', s:['Golden set, planted bugs,','shadow mode'], ic:'i-flask', st:[6], wide:true},
+
+  {id:'am', k:'node', x:304, y:652, w:230, h:72, t:'App Model', s:['Screens, endpoints, roles'], ic:'i-map', st:[1,2]},
+  {id:'il', k:'node', x:562, y:652, w:230, h:72, t:'Intent Ledger', s:['Approved behaviours'], ic:'i-target', st:[2,4,5]},
+  {id:'ta', k:'node', x:820, y:652, w:230, h:72, t:'Test assets', s:['Test code in git'], ic:'i-folder', st:[2,3]},
+  {id:'rh', k:'node', x:1078, y:652, w:230, h:72, t:'Run history', s:['Every result and timing'], ic:'i-chart', st:[3,4]},
+
+  {id:'sb', k:'node', x:304, y:818, w:300, h:92, t:'Sandbox', s:['Your app + fresh test data.','Deleted after the run.'], ic:'i-box-plus', st:[3]},
+  {id:'run', k:'node', x:640, y:818, w:330, h:92, t:'Runners', s:['Playwright, Appium, k6, ZAP, axe','Web, API, mobile, desktop'], ic:'i-play', st:[3]},
+  {id:'ev', k:'node', x:1006, y:818, w:302, h:92, t:'Evidence', s:['Video, traces, network logs,','backend traces'], ic:'i-video', st:[3,4]},
+
+  {id:'ms', k:'node', x:1384, y:296, w:180, h:56, t:'Small model', s:['Navigate, classify'], ic:'i-spark', st:[6]},
+  {id:'mm', k:'node', x:1384, y:372, w:180, h:56, t:'Medium model', s:['Write, triage, fix'], ic:'i-spark', st:[6]},
+  {id:'ml', k:'node', x:1384, y:448, w:180, h:56, t:'Large model', s:['Plan risk, review'], ic:'i-spark', st:[6]}
+];
+
+// flows: d = path, st = steps, l = optional label [text, x, y, anchor]
+const FLOWS = [
+  {id:'code-orch', d:'M226 268C258 268 258 208 288 208', st:[1]},
+  {id:'cli-orch', d:'M1246 136V168', st:[1]},
+  {id:'docs-plan', d:'M226 348H304', st:[1]},
+  {id:'rec-map', d:'M226 428C262 428 266 414 304 414', st:[1]},
+  {id:'orch-work', d:'M700 220V252', st:[1], l:['jobs',708,241]},
+  {id:'map-am', d:'M368 436V652', st:[1]},
+
+  {id:'map-plan', d:'M368 392V370', st:[2]},
+  {id:'plan-write', d:'M432 348H469', st:[2]},
+  {id:'write-rev', d:'M597 348H760C780 348 780 414 799 414', st:[2]},
+  {id:'rev-ta', d:'M863 436V652', st:[2]},
+  {id:'read', d:'M1028 610V552', st:[2,4], l:['reads',1036,586]},
+
+  {id:'data-env', d:'M533 436V458', st:[3]},
+  {id:'env-sb', d:'M533 502V570C533 600 541 600 541 630V818', st:[3]},
+  {id:'sel-run', d:'M698 436V570C698 600 555 600 555 630V748C555 772 660 772 660 792V818', st:[3]},
+  {id:'ta-run', d:'M900 724V818', st:[3]},
+  {id:'app-sb', d:'M226 870H304', st:[3]},
+  {id:'run-sb', d:'M640 864H604', st:[3]},
+  {id:'run-ev', d:'M970 864H1006', st:[3]},
+  {id:'ev-rh', d:'M1100 818V724', st:[3,4]},
+
+  {id:'tri-maint', d:'M927 340H964', st:[5]},
+  {id:'tri-rep', d:'M927 362C946 362 946 414 964 414', st:[5]},
+  {id:'tri-orch', d:'M900 326V220', st:[5], l:['verdict',906,241]},
+  {id:'maint-orch', d:'M1060 326V220', st:[5], l:['fix PR',1052,241,'end']},
+  {id:'rep-orch', d:'M1092 414C1100 414 1100 404 1100 396V220', st:[5], l:['report',1106,241]},
+  {id:'orch-in', d:'M388 168V136', st:[5]},
+  {id:'orch-dash', d:'M608 168V136', st:[5]},
+  {id:'orch-gh', d:'M828 168V136', st:[5]},
+  {id:'orch-tk', d:'M1048 168V136', st:[5]},
+  {id:'in-you', d:'M288 100H226', st:[5], l:['card',257,92,'middle']},
+  {id:'you-in', d:'M226 124H288', st:[5], l:['answer',257,142,'middle']},
+
+  {id:'w-gw', d:'M1108 313H1132', st:[6]},
+  {id:'g1', d:'M1228 326V340', st:[6]},
+  {id:'g2', d:'M1228 372V386', st:[6]},
+  {id:'g3', d:'M1228 418V432', st:[6]},
+  {id:'r-s', d:'M1312 448C1346 448 1350 324 1384 324', st:[6]},
+  {id:'r-m', d:'M1312 448C1346 448 1350 400 1384 400', st:[6]},
+  {id:'r-l', d:'M1312 448C1346 448 1350 476 1384 476', st:[6]},
+  {id:'gw-w', d:'M1132 452H1108', st:[6]},
+  {id:'eval-w', d:'M1132 521H1108', st:[6]}
+];
+
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function text(parent, x, y, str, cls, anchor){
+  const t = el('text', {x:x, y:y, class:cls}, parent);
+  if (anchor) t.setAttribute('text-anchor', anchor);
+  t.textContent = str;
+  return t;
+}
+function icon(parent, id, x, y, size){
+  return el('use', {href:'#'+id, x:x, y:y, width:size||22, height:size||22, class:'ic'}, parent);
+}
+
+// markers
+const defs = el('defs', {}, svg);
+[['ah','var(--muted)'],['ah-on','var(--accent)']].forEach(function(m){
+  const mk = el('marker', {id:m[0], viewBox:'0 0 10 10', refX:9, refY:5, markerWidth:9, markerHeight:9, markerUnits:'userSpaceOnUse', orient:'auto'}, defs);
+  el('path', {d:'M0 0L10 5L0 10z', style:'fill:'+m[1]}, mk);
+});
+
+// zones
+const gz = el('g', {}, svg);
+ZONES.forEach(function(z){
+  el('rect', {x:z.x, y:z.y, width:z.w, height:z.h, rx:10, class:'zone'+(z.core?' core':'')}, gz);
+  text(gz, z.x+18, z.y+32, z.l, 'zl');
+});
+// zone notes
+const zn = el('g', {class:'n', 'data-s':'3'}, svg);
+icon(zn, 'i-lock', 34, 740, 20);
+['Hybrid setup: the','runners move here,','inside your network.'].forEach(function(s,i){ text(zn, 34, 782+i*18, s, 'note'); });
+const mn = el('g', {class:'n', 'data-s':'6'}, svg);
+icon(mn, 'i-lock', 1384, 540, 20);
+['Gets one task at a time,','with secrets and personal','data removed.','','Your own key or a','private endpoint, optional.'].forEach(function(s,i){ text(mn, 1384, 582+i*18, s, 'note'); });
+
+// groups
+const gg = el('g', {}, svg);
+GROUPS.forEach(function(g){
+  const grp = el('g', {class:'grp'+(g.know?' know':'')}, gg);
+  el('rect', {x:g.x, y:g.y, width:g.w, height:g.h, rx:8}, grp);
+  const tx = g.x + (g.tx || 16);
+  icon(grp, g.ic, tx, g.y+11, 20);
+  text(grp, tx+28, g.y+27, g.t, 'gt');
+  if (g.n) text(grp, g.x+g.w-16, g.y+27, g.n, 'gn', 'end');
+});
+STAGES.forEach(function(s){ text(gg, s[1], 314, s[0], 'stg'); });
+
+// flows
+const gf = el('g', {}, svg);
+FLOWS.forEach(function(f){
+  el('path', {id:'p-'+f.id, d:f.d, class:'fl', 'data-s':f.st.join(',')}, gf);
+});
+const dots = el('g', {}, svg);
+
+// nodes
+const gn = el('g', {}, svg);
+NODES.forEach(function(n){
+  const g = el('g', {class:'n', 'data-s':n.st.join(',')}, gn);
+  if (n.k === 'chip' || n.k === 'gchip'){
+    const w = n.k === 'chip' ? 128 : 168, h = n.k === 'chip' ? 44 : 32;
+    el('rect', {x:n.x, y:n.y, width:w, height:h, rx:5, class:'box'}, g);
+    text(g, n.x+12, n.y+h/2+5, n.t, 'ct');
+    if (n.tier) text(g, n.x+w-10, n.y+h/2+4, n.tier, 'tier', 'end');
+    return;
+  }
+  el('rect', {x:n.x, y:n.y, width:n.w, height:n.h, rx:6, class:'box'}, g);
+  if (n.k === 'bar'){
+    icon(g, n.ic, n.x+16, n.y+15);
+    text(g, n.x+48, n.y+32, n.t, 'nt');
+    text(g, n.x+168, n.y+32, n.s, 'ns');
+    return;
+  }
+  const lines = n.s.length;
+  const top = n.y + (n.h - (lines*16 + 22))/2;
+  if (n.wide){
+    icon(g, n.ic, n.x+12, top-3, 20);
+    text(g, n.x+40, top+14, n.t, 'nt');
+    n.s.forEach(function(s,i){ text(g, n.x+14, top+34+i*16, s, 'ns'); });
+  } else {
+    icon(g, n.ic, n.x+14, n.y+n.h/2-11);
+    text(g, n.x+46, top+14, n.t, 'nt');
+    n.s.forEach(function(s,i){ text(g, n.x+46, top+34+i*16, s, 'ns'); });
+  }
+});
+
+// flow labels on top
+const gl = el('g', {}, svg);
+FLOWS.forEach(function(f){
+  if (!f.l) return;
+  const t = text(gl, f.l[1], f.l[2], f.l[0], 'pl', f.l[3]);
+  t.setAttribute('class', 'pl');
+  t.setAttribute('data-s', f.st.join(','));
+});
+
+// player
+const ctl = document.getElementById('ctl');
+const list = document.getElementById('steplist');
+const cnt = document.getElementById('cnt'), ctitle = document.getElementById('ctitle'), ctext = document.getElementById('ctext');
+const playBtn = document.getElementById('play');
+let cur = 0, timer = null;
+
+STEPS.forEach(function(s, i){
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'btn'; b.dataset.step = i;
+  b.innerHTML = '<svg class="i"><use href="#'+s.ic+'"/></svg>' + s.b;
+  b.addEventListener('click', function(){ stop(); setStep(i); });
+  ctl.appendChild(b);
+  if (i === 0) return;
+  const r = document.createElement('button');
+  r.type = 'button';
+  r.innerHTML = '<svg class="i"><use href="#'+s.ic+'"/></svg><span><b>'+s.t+'</b><p>'+s.x+'</p></span><span class="go">Show in diagram ↑</span>';
+  r.addEventListener('click', function(){ stop(); setStep(i); document.getElementById('top').scrollIntoView(); });
+  list.appendChild(r);
+});
+
+function setStep(n){
+  cur = n;
+  svg.classList.toggle('focus', n > 0);
+  svg.querySelectorAll('[data-s]').forEach(function(e){
+    e.classList.toggle('on', n > 0 && e.getAttribute('data-s').split(',').indexOf(String(n)) > -1);
+  });
+  ctl.querySelectorAll('.btn').forEach(function(b){ b.setAttribute('aria-pressed', String(+b.dataset.step === n)); });
+  cnt.textContent = n ? 'Step ' + n + ' of 6' : 'Overview';
+  ctitle.textContent = STEPS[n].t;
+  ctext.textContent = STEPS[n].x;
+  drawDots();
+}
+
+function drawDots(){
+  while (dots.firstChild) dots.removeChild(dots.firstChild);
+  if (reduce || cur === 0) return;
+  FLOWS.forEach(function(f){
+    if (f.st.indexOf(cur) < 0) return;
+    const p = document.getElementById('p-'+f.id);
+    const len = p.getTotalLength();
+    const c = el('circle', {r:4.5, class:'dot'}, dots);
+    const a = el('animateMotion', {dur:Math.max(0.9, len/150).toFixed(2)+'s', repeatCount:'indefinite'}, c);
+    const m = el('mpath', {href:'#p-'+f.id}, a);
+    m.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#p-'+f.id);
+    try { a.beginElement(); } catch(e) {}
+  });
+}
+
+function setPlayIcon(on){
+  playBtn.innerHTML = '<svg class="i"><use href="#'+(on?'i-pause':'i-play')+'"/></svg><span>'+(on?'Pause':'Play')+'</span>';
+  playBtn.setAttribute('aria-label', on ? 'Pause the steps' : 'Play the steps');
+}
+function stop(){ if (timer){ clearInterval(timer); timer = null; } setPlayIcon(false); }
+playBtn.addEventListener('click', function(){
+  if (timer){ stop(); return; }
+  setStep(cur >= 6 || cur === 0 ? 1 : cur + 1);
+  timer = setInterval(function(){ setStep(cur >= 6 ? 1 : cur + 1); }, 7000);
+  setPlayIcon(true);
+});
+
+document.addEventListener('keydown', function(e){
+  if (e.target.closest && e.target.closest('input,textarea')) return;
+  if (e.key === 'ArrowRight'){ stop(); setStep(cur >= 6 ? 0 : cur + 1); }
+  if (e.key === 'ArrowLeft'){ stop(); setStep(cur <= 0 ? 6 : cur - 1); }
+});
+
+const stage = document.getElementById('stage');
+const fitBtn = document.getElementById('fit');
+const fsEl = function(){ return document.fullscreenElement || document.webkitFullscreenElement; };
+if (!(document.fullscreenEnabled || document.webkitFullscreenEnabled)) fitBtn.hidden = true;
+fitBtn.addEventListener('click', function(){
+  if (fsEl()){
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else {
+    (stage.requestFullscreen || stage.webkitRequestFullscreen).call(stage);
+  }
+});
+function onFs(){
+  const on = !!fsEl();
+  fitBtn.setAttribute('aria-pressed', String(on));
+  fitBtn.querySelector('span').textContent = on ? 'Exit full screen' : 'Full screen';
+}
+document.addEventListener('fullscreenchange', onFs);
+document.addEventListener('webkitfullscreenchange', onFs);
+
+setStep(0);
+})();
+</script>
+</body>
+</html>
